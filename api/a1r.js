@@ -3,7 +3,7 @@
 // own wallet, and every batch carries a memo and touches the A1R tag address, so the chain itself is the ledger.
 // GET  a=status · a=snap · a=holders · a=wallet&w= · a=drops · a=drop&id= · a=coins · a=holdings&w= · a=chain
 // POST a=plan · a=send · a=landed · a=claim · a=fleet · a=launch
-const { Connection, PublicKey, SystemProgram, Transaction, TransactionInstruction, ComputeBudgetProgram, VersionedTransaction } = require('@solana/web3.js');
+const { Connection, PublicKey, SystemProgram, Transaction, TransactionInstruction, ComputeBudgetProgram, VersionedTransaction, Keypair } = require('@solana/web3.js');
 const SPL = require('@solana/spl-token');
 const crypto = require('crypto');
 const CFG = require('./a1r-config.json'), RU = CFG.rules;
@@ -211,13 +211,14 @@ const trending = () => memo('trend', 300e3, async () => { const j = await getJ(`
   return (j || []).filter(t => /pump/i.test(t.launchpad || '') && t.holderCount >= 80 && t.holderCount <= 4000).slice(0, 6).map(t => ({ mint: t.id, symbol: t.symbol, icon: t.icon || null, holders: t.holderCount })); });
 // a dry run of a real drop batch on mainnet: built by the same batchTx as every drop (fees, transfer, memo, tag touch), simulated by the RPC, never signed
 async function sim(q) { const payer = q.payer ? pk(q.payer).toBase58() : OPERATOR(); if (!payer) throw new Error('the operator wallet is not set yet. add a wallet to dry-run from it');
-  const mintQ = q.mint ? pk(q.mint, 'that is not a mint address').toBase58() : null;
-  return memo('sim:' + payer + ':' + (mintQ || ''), 30000, async () => { const opPk = new PublicKey(payer), bh = '11111111111111111111111111111111', runs = [];   // the RPC swaps in a live blockhash
+  const mintQ = q.mint ? pk(q.mint, 'that is not a mint address').toBase58() : null, full = q.full === '1';   // full=1: a whole batch to brand-new wallets, the worst case
+  return memo('sim:' + payer + ':' + (mintQ || '') + ':' + full, 30000, async () => { const opPk = new PublicKey(payer), bh = '11111111111111111111111111111111', runs = [];   // the RPC swaps in a live blockhash
     const run = async (D, part) => { const t = batchTx(D, 0, 1, part), t0 = Date.now(), v = (await conn.simulateTransaction(new VersionedTransaction(t.compileMessage()), { sigVerify: false, replaceRecentBlockhash: true, commitment: 'confirmed' })).value;
-      runs.push({ kind: D.kind, mint: D.mint, err: v.err ? JSON.stringify(v.err) : null, units: v.unitsConsumed ?? null, ms: Date.now() - t0, bytes: t.serialize({ requireAllSignatures: false, verifySignatures: false }).length, ixs: t.instructions.length,
+      runs.push({ kind: D.kind, mint: D.mint, wallets: part.length, limit: D.kind === 'sol' ? 60000 : 200000, err: v.err ? JSON.stringify(v.err) : null, units: v.unitsConsumed ?? null, ms: Date.now() - t0, bytes: t.serialize({ requireAllSignatures: false, verifySignatures: false }).length, ixs: t.instructions.length,
         memo: `a1r:drop:${D.id}:${D.kind}:${D.mint || 'SOL'}:1/1`, logs: (v.logs || []).filter(l => /Memo|invoke \[1\]|success$|failed|rror/.test(l)).slice(0, 24) }); };
-    await run({ id: 'selftest', kind: 'sol', mint: null, opPk, bh }, [[payer, 1n]]);
-    if (mintQ) { const mi = await mintInfo(mintQ); await run({ id: 'selftest', kind: 'token', mint: mintQ, decimals: mi.decimals, program: new PublicKey(mi.program), opPk, bh }, [[payer, 1n]]); }
+    const fresh = n => Array.from({ length: n }, () => Keypair.generate().publicKey.toBase58());
+    await run({ id: 'selftest', kind: 'sol', mint: null, opPk, bh }, full ? fresh(18).map(w => [w, BigInt(Math.round(RU.minSol * 1e9))]) : [[payer, 1n]]);
+    if (mintQ) { const mi = await mintInfo(mintQ); await run({ id: 'selftest', kind: 'token', mint: mintQ, decimals: mi.decimals, program: new PublicKey(mi.program), opPk, bh }, full ? fresh(6).map(w => [w, 1n]) : [[payer, 1n]]); }
     return { payer, at: Date.now(), runs }; }); }
 // the cargo in the hold: the dev buys of our launches still in the operator wallet, plus $A1R's unclaimed creator fees
 async function hold() { return memo('hold', 30000, async () => { const op = OPERATOR(); if (!op) return { items: [], fees: 0, usd: 0, solUsd: null };
