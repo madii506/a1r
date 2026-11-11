@@ -3,7 +3,7 @@
 // own wallet, and every batch carries a memo and touches the A1R tag address, so the chain itself is the ledger.
 // GET  a=status · a=snap · a=holders · a=wallet&w= · a=drops · a=drop&id= · a=coins · a=holdings&w= · a=chain
 // POST a=plan · a=send · a=landed · a=claim · a=fleet · a=launch
-const { Connection, PublicKey, SystemProgram, Transaction, TransactionInstruction, ComputeBudgetProgram } = require('@solana/web3.js');
+const { Connection, PublicKey, SystemProgram, Transaction, TransactionInstruction, ComputeBudgetProgram, VersionedTransaction } = require('@solana/web3.js');
 const SPL = require('@solana/spl-token');
 const crypto = require('crypto');
 const CFG = require('./a1r-config.json'), RU = CFG.rules;
@@ -53,10 +53,10 @@ async function mintInfo(mint) { return memo('mint:' + mint, 3600e3, async () => 
 async function fleet() { const saved = (await readJSON('fleet.json')) || []; const L = [...(CFG.fleet || []), ...saved].filter(f => okKey(f.mint) && f.mint !== MINT()); const seen = new Set(); return L.filter(f => !seen.has(f.mint) && seen.add(f.mint)); }
 // every wallet holding a mint, read straight from the token program; pools and bonding curves (owners off the curve) are left out
 async function holdersOf(mint) { const mi = await mintInfo(mint), prog = new PublicKey(mi.program), filters = [{ memcmp: { offset: 0, bytes: mint } }]; if (mi.program === TOKEN.toBase58()) filters.push({ dataSize: 165 });
-  const accs = await conn.getProgramAccounts(prog, { filters, dataSlice: { offset: 32, length: 40 }, encoding: 'base64' }), map = new Map(), skip = new Set([OPERATOR(), TAG.toBase58()].filter(Boolean));
+  const accs = await conn.getProgramAccounts(prog, { filters, dataSlice: { offset: 32, length: 40 }, encoding: 'base64' }), map = new Map(); let off = 0; const skip = new Set([OPERATOR(), TAG.toBase58()].filter(Boolean));
   for (const a of accs) { const d = a.account.data, b = Buffer.isBuffer(d) ? d : Array.isArray(d) ? Buffer.from(d[0], 'base64') : Buffer.from(d); if (b.length < 40) continue; const amt = b.readBigUInt64LE(32); if (amt === 0n) continue; const ob = b.subarray(0, 32);
-    if (!PublicKey.isOnCurve(ob)) continue; const o = new PublicKey(ob).toBase58(); if (skip.has(o)) continue; map.set(o, (map.get(o) || 0n) + amt); }
-  return { ...mi, map }; }
+    if (!PublicKey.isOnCurve(ob)) { off++; continue; } const o = new PublicKey(ob).toBase58(); if (skip.has(o)) continue; map.set(o, (map.get(o) || 0n) + amt); }
+  return { ...mi, map, accounts: accs.length, offCurve: off }; }
 const multOf = (since, now) => 1 + (RU.maxMult - 1) * Math.min(1, Math.max(0, now - since) / (RU.multDays * 86400e3));
 
 // ---------------------------------------------------------------- the snapshot: who holds what, since when, and what that weighs
@@ -197,6 +197,28 @@ async function chain() { return memo('chain', 30000, async () => { const sigs = 
   const txs = await parsedTxs(sigs.map(s => s.signature)).catch(() => []);
   txs.forEach((t, k) => { if (!t) return; for (const ix of t.transaction.message.instructions) if (ix.program === 'spl-memo' && typeof ix.parsed === 'string' && ix.parsed.startsWith('a1r:')) rows.push({ memo: ix.parsed, sig: sigs[k].signature, at: t.blockTime, by: t.transaction.message.accountKeys[0].pubkey.toBase58() }); });
   return rows; }); }
+// ---------------------------------------------------------------- self-checks anyone can run (read-only: nothing is saved, signed or sent)
+// the RPC, timed
+const ping = () => memo('ping', 4000, async () => { const t0 = Date.now(), slot = await conn.getSlot('confirmed'); return { slot, ms: Date.now() - t0, rpc: process.env.RPC_URL ? 'custom' : 'public', at: Date.now() }; });
+// the snapshot reader on any coin: every holder read from the token program, pools and curves left out, and how 1 SOL would split today (all clocks at 1x)
+async function scan(m) { const mint = pk(m, 'that is not a mint address').toBase58(); return memo('scan:' + mint, 60000, async () => { const t0 = Date.now(), h = await holdersOf(mint), sup = Number(h.supply) || 1;
+  const L = [...h.map].map(([w, b]) => [w, Number(b) / sup, Number(b) / 10 ** h.decimals]).sort((a, b) => b[1] - a[1]), el = L.filter(x => x[1] >= RU.minHoldPct / 100), tw = el.reduce((s, x) => s + x[1], 0);
+  const ms = Date.now() - t0, info = (await jupInfo([mint]))[mint] || {};
+  return { mint, program: h.program === T22.toBase58() ? 'token-2022' : 'token', decimals: h.decimals, supply: h.supply, accounts: h.accounts, offCurve: h.offCurve, holders: L.length, eligible: el.length, ms, at: Date.now(), ref: { symbol: info.symbol || null, name: info.name || null, icon: info.icon || null, holders: info.holders ?? null },
+    top: el.slice(0, 12).map(([w, sh, ui]) => ({ w, sh, ui, of1: tw ? sh / tw : 0 })) }; }); }
+// a few live pump.fun coins to try the reader on (from Jupiter's trending list; small enough to read in a second)
+const trending = () => memo('trend', 300e3, async () => { const j = await getJ(`${JUP}/tokens/v2/toptrending/1h?limit=60`).catch(() => []);
+  return (j || []).filter(t => /pump/i.test(t.launchpad || '') && t.holderCount >= 80 && t.holderCount <= 4000).slice(0, 6).map(t => ({ mint: t.id, symbol: t.symbol, icon: t.icon || null, holders: t.holderCount })); });
+// a dry run of a real drop batch on mainnet: built by the same batchTx as every drop (fees, transfer, memo, tag touch), simulated by the RPC, never signed
+async function sim(q) { const payer = q.payer ? pk(q.payer).toBase58() : OPERATOR(); if (!payer) throw new Error('the operator wallet is not set yet. add a wallet to dry-run from it');
+  const mintQ = q.mint ? pk(q.mint, 'that is not a mint address').toBase58() : null;
+  return memo('sim:' + payer + ':' + (mintQ || ''), 30000, async () => { const opPk = new PublicKey(payer), bh = '11111111111111111111111111111111', runs = [];   // the RPC swaps in a live blockhash
+    const run = async (D, part) => { const t = batchTx(D, 0, 1, part), t0 = Date.now(), v = (await conn.simulateTransaction(new VersionedTransaction(t.compileMessage()), { sigVerify: false, replaceRecentBlockhash: true, commitment: 'confirmed' })).value;
+      runs.push({ kind: D.kind, mint: D.mint, err: v.err ? JSON.stringify(v.err) : null, units: v.unitsConsumed ?? null, ms: Date.now() - t0, bytes: t.serialize({ requireAllSignatures: false, verifySignatures: false }).length, ixs: t.instructions.length,
+        memo: `a1r:drop:${D.id}:${D.kind}:${D.mint || 'SOL'}:1/1`, logs: (v.logs || []).filter(l => /Memo|invoke \[1\]|success$|failed|rror/.test(l)).slice(0, 24) }); };
+    await run({ id: 'selftest', kind: 'sol', mint: null, opPk, bh }, [[payer, 1n]]);
+    if (mintQ) { const mi = await mintInfo(mintQ); await run({ id: 'selftest', kind: 'token', mint: mintQ, decimals: mi.decimals, program: new PublicKey(mi.program), opPk, bh }, [[payer, 1n]]); }
+    return { payer, at: Date.now(), runs }; }); }
 // the cargo in the hold: the dev buys of our launches still in the operator wallet, plus $A1R's unclaimed creator fees
 async function hold() { return memo('hold', 30000, async () => { const op = OPERATOR(); if (!op) return { items: [], fees: 0, usd: 0, solUsd: null };
   const L = (await readJSON('launches.json')) || [], set = new Set(L.map(x => x.mint)), h = await holdings(op), su = await solUsd().catch(() => null);
@@ -221,10 +243,14 @@ module.exports = async (req, res) => {
       if (a === 'drop') { const p = await readJSON(`plan/${clean(q.id, 40).replace(/[^a-z0-9]/g, '')}.json`); return p ? out(res, 200, p, 'public, max-age=10') : out(res, 404, { error: 'no such drop' }); }
       if (a === 'coins') return out(res, 200, await coins(), 'public, max-age=30');
       if (a === 'holdings') return out(res, 200, await holdings(pk(q.w).toBase58()));
-      if (a === 'chain') return out(res, 200, await chain(), 'public, max-age=20');
+      if (a === 'chain') return out(res, 200, await chain(), 'public, max-age=20, s-maxage=30');
       if (a === 'verify') return out(res, 200, await verify(q.id), 'public, max-age=20');
       if (a === 'sol') return out(res, 200, { usd: await solUsd() }, 'public, max-age=30');
       if (a === 'hold') return out(res, 200, await hold(), 'public, max-age=30');
+      if (a === 'ping') return out(res, 200, await ping(), 'public, max-age=3, s-maxage=4');
+      if (a === 'scan') return out(res, 200, await scan(q.mint), 'public, max-age=30, s-maxage=60');
+      if (a === 'trending') return out(res, 200, await trending(), 'public, max-age=60, s-maxage=300');
+      if (a === 'sim') return out(res, 200, await sim(q), 'public, max-age=15, s-maxage=30');
       return out(res, 400, { error: 'unknown action' });
     }
     const b = await body(req);
