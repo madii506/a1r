@@ -12,7 +12,7 @@
     "sellReset": 0.98,
     "minHoldPct": 0.01,
     "maxRecipients": 400,
-    "minSol": 0.0005,
+    "minSol": 0.001,
     "minTokenShare": 0.0002,
     "snapEveryMin": 10
   }

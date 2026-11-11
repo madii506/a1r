@@ -85,8 +85,10 @@ async function snapshot(force) {
 
 // ---------------------------------------------------------------- drops: a plan, its batches, and the proof it landed
 const dropIndex = async () => (await readJSON('drops.json')) || [];
+// compute limits measured on mainnet: 18 SOL transfers to new wallets used 15k; 6 brand-new Token-2022 accounts used up to 166k
+const CU = { sol: 60000, token: 300000 };
 function batchTx(D, k, n, part) { const { id, kind, mint, decimals, program, opPk, bh } = D, t = new Transaction({ feePayer: opPk, recentBlockhash: bh });
-  t.add(ComputeBudgetProgram.setComputeUnitLimit({ units: kind === 'sol' ? 60000 : 200000 }), ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 50000 }));
+  t.add(ComputeBudgetProgram.setComputeUnitLimit({ units: kind === 'sol' ? CU.sol : CU.token }), ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 50000 }));
   if (kind === 'sol') for (const [w, v] of part) t.add(SystemProgram.transfer({ fromPubkey: opPk, toPubkey: new PublicKey(w), lamports: BigInt(v) }));
   else { const m = new PublicKey(mint), src = SPL.getAssociatedTokenAddressSync(m, opPk, false, program); for (const [w, v] of part) { const to = new PublicKey(w), dst = SPL.getAssociatedTokenAddressSync(m, to, false, program);
       t.add(SPL.createAssociatedTokenAccountIdempotentInstruction(opPk, dst, to, m, program), SPL.createTransferCheckedInstruction(src, m, dst, opPk, BigInt(v), decimals, [], program)); } }
@@ -214,7 +216,7 @@ async function sim(q) { const payer = q.payer ? pk(q.payer).toBase58() : OPERATO
   const mintQ = q.mint ? pk(q.mint, 'that is not a mint address').toBase58() : null, full = q.full === '1';   // full=1: a whole batch to brand-new wallets, the worst case
   return memo('sim:' + payer + ':' + (mintQ || '') + ':' + full, 30000, async () => { const opPk = new PublicKey(payer), bh = '11111111111111111111111111111111', runs = [];   // the RPC swaps in a live blockhash
     const run = async (D, part) => { const t = batchTx(D, 0, 1, part), t0 = Date.now(), v = (await conn.simulateTransaction(new VersionedTransaction(t.compileMessage()), { sigVerify: false, replaceRecentBlockhash: true, commitment: 'confirmed' })).value;
-      runs.push({ kind: D.kind, mint: D.mint, wallets: part.length, limit: D.kind === 'sol' ? 60000 : 200000, err: v.err ? JSON.stringify(v.err) : null, units: v.unitsConsumed ?? null, ms: Date.now() - t0, bytes: t.serialize({ requireAllSignatures: false, verifySignatures: false }).length, ixs: t.instructions.length,
+      runs.push({ kind: D.kind, mint: D.mint, wallets: part.length, limit: D.kind === 'sol' ? CU.sol : CU.token, err: v.err ? JSON.stringify(v.err) : null, units: v.unitsConsumed ?? null, ms: Date.now() - t0, bytes: t.serialize({ requireAllSignatures: false, verifySignatures: false }).length, ixs: t.instructions.length,
         memo: `a1r:drop:${D.id}:${D.kind}:${D.mint || 'SOL'}:1/1`, logs: (v.logs || []).filter(l => /Memo|invoke \[1\]|success$|failed|rror/.test(l)).slice(0, 24) }); };
     const fresh = n => Array.from({ length: n }, () => Keypair.generate().publicKey.toBase58());
     await run({ id: 'selftest', kind: 'sol', mint: null, opPk, bh }, full ? fresh(18).map(w => [w, BigInt(Math.round(RU.minSol * 1e9))]) : [[payer, 1n]]);
