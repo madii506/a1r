@@ -1,0 +1,13 @@
+{
+  "name": "a1r",
+  "private": true,
+  "engines": { "node": "22.x" },
+  "dependencies": {
+    "@pump-fun/pump-sdk": "4.3.1",
+    "@solana/spl-token": "0.4.15",
+    "@solana/web3.js": "1.99.0",
+    "@vercel/blob": "2.8.2",
+    "bn.js": "^5.2.1"
+  },
+  "overrides": { "rpc-websockets": "9.3.3" }
+}
