@@ -107,8 +107,7 @@
   // ---------------------------------------------------------------- views
   const V = {};
   V.promise = async m => { const s = S.status || {};
-    m.innerHTML = `<section class="tc"><div class="kick">the receipts</div><div class="h1" style="margin-top:10px">they promised.<br>we built.</div>
-      <p class="sub">pump.fun said <q>airdrop coming soon</q> on 9 July 2025. This is everything that happened next, each with its source. Then the tech we built instead.</p>
+    m.innerHTML = `<section class="tc"><p class="sub" style="margin-top:6px">pump.fun said <q>airdrop coming soon</q> on 9 July 2025. This is everything that happened next, each with its source. Then the tech we built instead.</p>
       <div class="bigday"><span class="flap" id="pd"></span><div class="mut">days since "coming soon"</div></div></section>
       <section class="sec"><div class="sec-h"><div><div class="kick">the timeline</div><div class="h2">what they said, what happened.</div></div></div>${timelineHTML(PROMISE, true)}</section>
       <section class="sec"><div class="sec-h"><div><div class="kick">what we built instead</div><div class="h2">six parts, all running.</div></div><a class="btn" href="#/how">the rules</a></div>

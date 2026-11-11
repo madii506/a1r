@@ -102,7 +102,6 @@ export function run({ host, SND, done }) {
     box(fw * .5, .035, .05, lightM, 0, fh / 2 + .13, .07, grp);
     if (easel) { for (const sx of [-.42, .42]) { const lg = box(.06, y - FLOOR + fh / 2 - .1, .06, legM, sx * fw, -(y - FLOOR) / 2 + fh / 4 - .05, -.05, grp); lg.rotation.z = sx * -.04; } box(.05, y - FLOOR + .2, .05, legM, 0, -(y - FLOOR) / 2 + .1, -.45, grp).rotation.x = -.22; box(fw * .95, .05, .1, legM, 0, -fh / 2 - .06, .02, grp); } }
   GAL.forEach((d, i) => { const right = i % 2 === 0, k = Math.floor(i / 2); hang(d, 21.6 + k * 3.1 + (right ? 0 : 1.55), FLOOR + 1.9, right ? -22.15 : -29.85, right ? Math.PI + .3 : -.3, 1.25, 1.56, false, true); });
-  hang(['AIRDROP', '"coming soon"', `pump.fun · 9 jul 2025 · ${DAYS} days ago`, 0], 39.68, FLOOR + 3.55, -26, -Math.PI / 2, 3.4, 2.34, true, false);
   const redraw = () => paintings.forEach(([c, d, big, t]) => { painting(c, d, big); t.needsUpdate = true; });
   try { Promise.all([document.fonts.load('700 96px ID'), document.fonts.load('20px JB')]).then(redraw).catch(() => { }); } catch (e) { }
 
