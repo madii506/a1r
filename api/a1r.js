@@ -225,13 +225,6 @@ module.exports = async (req, res) => {
       if (a === 'verify') return out(res, 200, await verify(q.id), 'public, max-age=20');
       if (a === 'sol') return out(res, 200, { usd: await solUsd() }, 'public, max-age=30');
       if (a === 'hold') return out(res, 200, await hold(), 'public, max-age=30');
-      if (a === 'probe') { const mint = pk(q.mint).toBase58(); if (!/pump$/.test(mint)) throw new Error('probe reads pump.fun coins only'); return out(res, 200, await memo('probe:' + mint, 600e3, async () => { const t = Date.now(), h = await holdersOf(mint); const top = [...h.map.entries()].sort((x, y) => (y[1] > x[1] ? 1 : -1)).slice(0, 3).map(([w, v]) => [w.slice(0, 4), (Number(v) / Number(h.supply) * 100).toFixed(3) + '%']); return { mint, program: h.program, decimals: h.decimals, supply: h.supply, holders: h.map.size, top, ms: Date.now() - t }; }), 'public, max-age=60'); }
-      if (a === 'pumpcheck') return out(res, 200, await memo('pumpcheck', 600e3, async () => { const { Keypair, VersionedTransaction } = require('@solana/web3.js'), SDK = require('@pump-fun/pump-sdk'), BN = require('bn.js'), online = new SDK.OnlinePumpSdk(conn), global = await online.fetchGlobal(), feeConfig = await online.fetchFeeConfig().catch(() => null);
-        const payer = new PublicKey('5tzFkiKscXHK5ZXCGbXZxdw7gTjjD1mBwuoFbhUvuAi9'), mint = Keypair.generate().publicKey, sol = new BN(50000000), amount = SDK.getBuyTokenAmountFromSolAmount({ global, feeConfig, mintSupply: null, bondingCurve: null, amount: sol, quoteMint: new PublicKey(SOL) });
-        const ixs = await SDK.PUMP_SDK.createV2AndBuyInstructions({ global, mint, name: 'probe', symbol: 'PRB', uri: 'https://a1r-seven.vercel.app/og.png', creator: payer, user: payer, amount, solAmount: sol.muln(101).divn(100), mayhemMode: false });
-        const t = new Transaction({ feePayer: payer, recentBlockhash: (await conn.getLatestBlockhash('confirmed')).blockhash }); t.add(ComputeBudgetProgram.setComputeUnitLimit({ units: 400000 }), ...ixs);
-        const r = await conn.simulateTransaction(new VersionedTransaction(t.compileMessage()), { sigVerify: false, replaceRecentBlockhash: true }); const vb = await online.getCreatorVaultBalanceBothPrograms(payer).then(x => x.toString()).catch(e => 'err ' + e.message);
-        return { tokens: amount.toString(), ixs: ixs.length, err: r.value.err, logs: (r.value.logs || []).filter(l => /Instruction|error|failed|success|consumed/i.test(l)).slice(-10), vault: vb }; }));
       return out(res, 400, { error: 'unknown action' });
     }
     const b = await body(req);
