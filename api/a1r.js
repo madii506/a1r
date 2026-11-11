@@ -19,7 +19,7 @@ const MINT = () => okKey(process.env.A1R_MINT) || okKey(CFG.mint);
 const OPERATOR = () => okKey(process.env.A1R_OPERATOR) || okKey(CFG.operator);
 const TAG = new PublicKey(process.env.A1R_TAG || CFG.tag);
 
-const out = (res, code, b, cache) => { res.statusCode = code; res.setHeader('content-type', 'application/json'); res.setHeader('cache-control', cache || 'no-store'); res.end(JSON.stringify(b)); };
+const out = (res, code, b, cache) => { res.statusCode = code; res.setHeader('content-type', 'application/json'); res.setHeader('access-control-allow-origin', '*'); res.setHeader('cache-control', cache || 'no-store'); res.end(JSON.stringify(b)); };
 const body = req => new Promise(ok => { if (req.body) return ok(typeof req.body === 'string' ? JSON.parse(req.body) : req.body); let d = ''; req.on('data', c => d += c); req.on('end', () => { try { ok(JSON.parse(d || '{}')); } catch { ok({}); } }); });
 const clean = (s, n) => String(s || '').replace(/[\u0000-\u001f]/g, '').trim().slice(0, n);
 const pk = (s, what) => { try { return new PublicKey(String(s).trim()); } catch { throw new Error(what || 'that is not a Solana address'); } };
