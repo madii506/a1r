@@ -1,0 +1,19 @@
+{
+  "name": "A1R",
+  "mint": null,
+  "operator": null,
+  "tag": "JBw4Yw49d6euyRBmsB2NqLatQvedyBLWyNNPr6S4d2rM",
+  "promised": "2025-07-09",
+  "fleet": [],
+  "rules": {
+    "fleetWeight": 0.25,
+    "maxMult": 3,
+    "multDays": 14,
+    "sellReset": 0.98,
+    "minHoldPct": 0.01,
+    "maxRecipients": 400,
+    "minSol": 0.0005,
+    "minTokenShare": 0.0002,
+    "snapEveryMin": 10
+  }
+}
