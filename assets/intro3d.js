@@ -8,7 +8,7 @@ import { OutputPass } from './vendor/OutputPass.js';
 
 const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v)), mix = (a, b, k) => a + (b - a) * k, span = (t, a, b) => clamp((t - a) / (b - a));
 const eio = k => k < .5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2, eout = k => 1 - Math.pow(1 - k, 3), smooth = k => k * k * (3 - 2 * k);
-const T = { walk: [0.25, 9.4], sit: [9.25, 10.15], power: 9.8, boot: [10.0, 12.75], push: [12.45, 13.95], end: 14.05 };
+const T = { walk: [0.25, 10.4], sit: [10.25, 11.15], power: 10.8, boot: [11.0, 13.75], push: [13.45, 14.95], end: 15.05 };
 const DX = 35.6, FLOOR = 3.6;   // the desk's x, the warehouse floor
 
 export function run({ host, SND, done }) {
@@ -22,6 +22,7 @@ export function run({ host, SND, done }) {
   const box = (w, h, d, mat, x, y, z, parent = scene) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); m.position.set(x, y, z); parent.add(m); return m; };
   const tex = (w, h, draw) => { const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t; };
 
+  const DAYS = Math.max(0, Math.floor((Date.now() - Date.UTC(2025, 6, 9)) / 86400e3));
   // ---------------------------------------------------------------- the street
   const asphalt = M(0x0b0c0f, .9); const ground = new THREE.Mesh(new THREE.PlaneGeometry(40, 140), asphalt); ground.rotation.x = -Math.PI / 2; ground.position.set(0, 0, -20); scene.add(ground);
   for (const s of [-1, 1]) box(2.6, .14, 140, M(0x15161a, .85), s * 5.7, .07, -20);
@@ -72,6 +73,39 @@ export function run({ host, SND, done }) {
   for (const x of [22.5, 28.5, 34]) { box(.03, 3.4, .03, shadeM, x, FLOOR + 7.3, -26); const sh = new THREE.Mesh(new THREE.ConeGeometry(.55, .45, 20, 1, true), shadeM); sh.position.set(x, FLOOR + 5.4, -26); scene.add(sh); box(.3, .05, .3, hot, x, FLOOR + 5.2, -26);
     const S = new THREE.SpotLight(0xffe0b0, 80, 15, .85, .7, 1.4); S.position.set(x, FLOOR + 5.15, -26); S.target.position.set(x, FLOOR, -26); scene.add(S, S.target);
     const F = new THREE.PointLight(0xffd8a8, 9, 11, 1.5); F.position.set(x, FLOOR + 4.6, -26); scene.add(F); }
+  // ---------------------------------------------------------------- the gallery: pump.fun coins that went to the moon, painted as moons
+  // original paintings: the ticker, the fact, the date. No logos or mascots, those belong to their makers.
+  const GAL = [['PNUT', 'peaked above $2B', 'nov 2024', 28], ['GOAT', 'first pump.fun coin past $1B', '2024', 205], ['FARTCOIN', 'passed $1B', 'dec 2024', 95], ['CHILLGUY', 'hit $600M', 'nov 2024', 190],
+    ['MOODENG', 'above $300M', '2024', 330], ['ACT', '+1,720% on its binance listing', 'nov 2024', 265], ['BILLY', 'pump.fun\'s no. 2 at $100M+', '2024', 45]];
+  const paintings = [];
+  function painting(c, [tk, line, date, hue], big) { const g = c.getContext('2d'), w = c.width, h = c.height; let sd = 7 + tk.length * 977 + hue * 31; const r = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
+    const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, `hsl(${hue},42%,${big ? 9 : 13}%)`); gr.addColorStop(.6, `hsl(${(hue + 25) % 360},38%,8%)`); gr.addColorStop(1, `hsl(${(hue + 40) % 360},30%,5%)`); g.fillStyle = gr; g.fillRect(0, 0, w, h);
+    g.lineCap = 'round'; for (let k = 0; k < (big ? 2200 : 1100); k++) { const x = r() * w, y = r() * h * .72, l = 6 + r() * w / 12, a = (r() - .5) * .9; g.strokeStyle = `hsla(${hue + (r() - .5) * 50},${35 + r() * 35}%,${18 + r() * 34}%,${.05 + r() * .12})`; g.lineWidth = 1.5 + r() * w / 90; g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + l * .5, y + (r() - .5) * 10, x + Math.cos(a) * l, y + Math.sin(a) * l); g.stroke(); }
+    for (let k = 0; k < 90; k++) { g.fillStyle = `rgba(255,250,235,${.2 + r() * .6})`; const sz = r() < .1 ? 2.4 : 1.3; g.fillRect(r() * w, r() * h * .6, sz, sz); }
+    // the moon, in ASCII, lit from the upper left, with craters
+    const cx = w * .5, cy = h * (big ? .38 : .36), R = Math.min(w, h) * (big ? .24 : .28), cs = Math.max(8, Math.round(w / 56)), ramp = ' .,:;-=+*#%@'; const cr = Array.from({ length: 6 }, () => [(r() - .5) * 1.2, (r() - .5) * 1.2, .12 + r() * .18]);
+    const glow = g.createRadialGradient(cx, cy, R * .8, cx, cy, R * 1.9); glow.addColorStop(0, `hsla(${hue + 30},60%,70%,.22)`); glow.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = glow; g.fillRect(0, 0, w, h);
+    g.font = `700 ${Math.round(cs * 1.15)}px "JB", ui-monospace, monospace`; g.textAlign = 'center'; g.textBaseline = 'middle';
+    for (let y = cy - R; y <= cy + R; y += cs * 1.2) for (let x = cx - R; x <= cx + R; x += cs * .82) { const dx = (x - cx) / R, dy = (y - cy) / R, d2 = dx * dx + dy * dy; if (d2 > 1) continue;
+      let L = Math.max(0, -dx * .5 - dy * .55 + Math.sqrt(1 - d2) * .75); for (const [ux, uy, ur] of cr) { const q = Math.hypot(dx - ux, dy - uy) / ur; if (q < 1) L *= .55 + .45 * q; }
+      g.fillStyle = `hsla(${hue + 35},${25 + L * 25}%,${48 + L * 46}%,${.3 + L * .7})`; g.fillText(ramp[Math.min(ramp.length - 1, Math.floor(L * ramp.length))], x, y); }
+    // the facts
+    const T1 = big ? tk : '$' + tk, fs = big ? 150 : Math.min(104, Math.floor(w * .9 / (T1.length * .64))); g.font = `700 ${fs}px "ID", "Inter", system-ui, sans-serif`; g.fillStyle = '#f3efe5'; g.fillText(T1, cx, h * (big ? .74 : .755));
+    g.font = `${big ? 34 : 21}px "JB", ui-monospace, monospace`; g.fillStyle = 'rgba(243,239,229,.82)'; g.fillText(line, cx, h * (big ? .855 : .865));
+    g.fillStyle = 'rgba(243,239,229,.45)'; g.font = `${big ? 24 : 16}px "JB", ui-monospace, monospace`; g.fillText(big ? date : date + ' · born on pump.fun', cx, h * (big ? .92 : .925));
+    const vg = g.createRadialGradient(cx, h / 2, Math.min(w, h) * .45, cx, h / 2, Math.max(w, h) * .78); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.55)'); g.fillStyle = vg; g.fillRect(0, 0, w, h); }
+  const frameM = M(0x2a2118, .55, .35), legM = M(0x1c1712, .7, .2), lightM = new THREE.MeshBasicMaterial({ color: 0xffe6c0, toneMapped: false });
+  function hang(data, x, y, z, ry, fw, fh, big, easel) { const c = document.createElement('canvas'); c.width = big ? 1024 : 512; c.height = Math.round(c.width * fh / fw); painting(c, data, big);
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; paintings.push([c, data, big, t]);
+    const grp = new THREE.Group(); grp.position.set(x, y, z); grp.rotation.y = ry; scene.add(grp);
+    box(fw + .14, fh + .14, .07, frameM, 0, 0, -.02, grp); const cv = new THREE.Mesh(new THREE.PlaneGeometry(fw, fh), M(0xffffff, .9, 0, { map: t, emissiveMap: t, emissive: new THREE.Color(0xffffff), emissiveIntensity: .62 })); cv.position.z = .02; grp.add(cv);
+    box(fw * .5, .035, .05, lightM, 0, fh / 2 + .13, .07, grp);
+    if (easel) { for (const sx of [-.42, .42]) { const lg = box(.06, y - FLOOR + fh / 2 - .1, .06, legM, sx * fw, -(y - FLOOR) / 2 + fh / 4 - .05, -.05, grp); lg.rotation.z = sx * -.04; } box(.05, y - FLOOR + .2, .05, legM, 0, -(y - FLOOR) / 2 + .1, -.45, grp).rotation.x = -.22; box(fw * .95, .05, .1, legM, 0, -fh / 2 - .06, .02, grp); } }
+  GAL.forEach((d, i) => { const right = i % 2 === 0, k = Math.floor(i / 2); hang(d, 21.6 + k * 3.1 + (right ? 0 : 1.55), FLOOR + 1.9, right ? -22.15 : -29.85, right ? Math.PI + .3 : -.3, 1.25, 1.56, false, true); });
+  hang(['AIRDROP', '"coming soon"', `pump.fun · 9 jul 2025 · ${DAYS} days ago`, 0], 39.68, FLOOR + 3.55, -26, -Math.PI / 2, 3.4, 2.34, true, false);
+  const redraw = () => paintings.forEach(([c, d, big, t]) => { painting(c, d, big); t.needsUpdate = true; });
+  try { Promise.all([document.fonts.load('700 96px ID'), document.fonts.load('20px JB')]).then(redraw).catch(() => { }); } catch (e) { }
+
   // the desk, the PC, the chair
   const deskM = M(0x151618, .5, .25); box(1.3, .05, 2, deskM, DX, FLOOR + .74, -26); for (const zz of [-26.9, -25.1]) box(1.2, .72, .05, M(0x0f1012, .6), DX, FLOOR + .36, zz);
   box(.17, .02, .24, M(0x1a1a1a, .4, .4), DX + .42, FLOOR + .775, -26); box(.03, .3, .03, M(0x1d1d1d, .35, .6), DX + .4, FLOOR + .92, -26); const bezel = box(.03, .58, 1.0, M(0x0e0e0e, .4, .3), DX + .32, FLOOR + 1.08, -26);
@@ -86,7 +120,6 @@ export function run({ host, SND, done }) {
   // ---------------------------------------------------------------- the screen: it wakes up and boots A1R, the same log the site opens on
   const MONO = '"JB", ui-monospace, Menlo, monospace'; try { document.fonts && document.fonts.load('20px JB'); } catch (e) { }
   const sh = (w, n = 4) => w ? w.slice(0, n) + '…' + w.slice(-n) : '';
-  const DAYS = Math.max(0, Math.floor((Date.now() - Date.UTC(2025, 6, 9)) / 86400e3));
   let SL = null; const screenLines = () => { const s = (window.A1R && window.A1R.S && window.A1R.S.status) || {}, R = s.rules || { maxMult: 3, multDays: 14, minHoldPct: .01, maxRecipients: 400 };
     const L = [['h', 'A1R v1 · dropzone · ' + new Date().toISOString().slice(0, 16).replace('T', ' ') + ' utc'],
       ['ok', 'load ', 'snapshot reader', 'token program · pools out'], ['ok', 'load ', 'holder clocks', `1x → ${R.maxMult}x over ${R.multDays} days`],
@@ -121,12 +154,15 @@ export function run({ host, SND, done }) {
   const path = new THREE.CatmullRomCurve3([[0, 1.7, -4], [0, 1.7, -12], [0, 1.7, -19.5], [.9, 1.7, -24.2], [3.6, 1.7, -25.85], [6.6, 1.7, -26], [8.7, 1.72, -26], [12.3, 3.55, -26], [15.7, 5.3, -26], [18.2, 5.3, -26], [23, 5.3, -26], [28.5, 5.3, -26], [DX - 1.15, 5.3, -26]].map(p => new THREE.Vector3(...p)), false, 'centripetal', .5);
   const LEN = path.getLength(), dur = T.walk[1] - T.walk[0], ramp = .7;
   // distance travelled: accelerate, cruise, slow down at the desk
-  const vmax = LEN / (dur - ramp * .5 - 1.1 * .5), dist = t => { const s = clamp(t - T.walk[0], 0, dur); if (s < ramp) return vmax * s * s / (2 * ramp); const a = vmax * ramp / 2; if (s < dur - 1.1) return a + vmax * (s - ramp); const r = s - (dur - 1.1); return Math.min(LEN, a + vmax * (dur - 1.1 - ramp) + vmax * (r - r * r / (2 * 1.1))); };
+  const vmax = LEN / (dur - ramp * .5 - 1.1 * .5), dist0 = t => { const s = clamp(t - T.walk[0], 0, dur); if (s < ramp) return vmax * s * s / (2 * ramp); const a = vmax * ramp / 2; if (s < dur - 1.1) return a + vmax * (s - ramp); const r = s - (dur - 1.1); return Math.min(LEN, a + vmax * (dur - 1.1 - ramp) + vmax * (r - r * r / (2 * 1.1))); };
+  // the same walk, re-timed: brisk on the street, slow through the gallery so the paintings can be seen
+  const WARP = (() => { const N = 600, acc = [0]; let tt = 0, prev = path.getPointAt(0); for (let k = 1; k <= N; k++) { const q = path.getPointAt(k / N), ds = q.distanceTo(prev); tt += ds / (q.x > 18.6 && q.x < 33.2 ? .55 : 1.15); acc.push(tt); prev = q; } return acc.map(v => v / tt); })();
+  const dist = t => { const f = dist0(t) / LEN; let lo = 0, hi = WARP.length - 1; while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (WARP[mid] < f) lo = mid; else hi = mid; } const k = (f - WARP[lo]) / Math.max(1e-9, WARP[hi] - WARP[lo]); return LEN * (lo + k) / (WARP.length - 1); };
   const tmp = new THREE.Vector3(), tmp2 = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0);
-  function camAt(t) { const u = clamp(dist(t) / LEN), p = path.getPointAt(u), ahead = path.getPointAt(Math.min(1, u + 3.2 / LEN)), walking = t > T.walk[0] && t < T.walk[1] - .3;
-    const ph = dist(t) * 1.25, bob = walking ? 1 : 0, onStairs = p.x > 8.6 && p.x < 15.8 ? 1 : 0; tmp.copy(ahead).sub(p).normalize(); const side = tmp2.crossVectors(tmp, up).normalize();
-    const pos = p.clone().addScaledVector(up, (Math.abs(Math.sin(ph * Math.PI)) * .05 - .025) * bob * (1 + onStairs * .6)).addScaledVector(side, Math.sin(ph * Math.PI * .5) * .03 * bob);
-    const look = ahead.clone(); look.y += onStairs ? .35 : -.05; look.addScaledVector(side, Math.sin(t * .7) * .05);
+  function camAt(t) { const u = clamp(dist(t) / LEN), p = path.getPointAt(u), ahead = path.getPointAt(Math.min(1, u + 5 / LEN)), walking = smooth(span(t, T.walk[0], T.walk[0] + .8)) * (1 - smooth(span(t, T.walk[1] - 1.2, T.walk[1] - .2)));
+    const ph = dist(t) * 1.1, onStairs = smooth(span(p.x, 8.4, 9.2)) * (1 - smooth(span(p.x, 15.4, 16.2))); tmp.copy(ahead).sub(p).normalize(); const side = tmp2.crossVectors(tmp, up).normalize();
+    const pos = p.clone().addScaledVector(up, (Math.abs(Math.sin(ph * Math.PI)) - .5) * .016 * walking * (1 + onStairs * .3)).addScaledVector(side, Math.sin(ph * Math.PI * .5) * .006 * walking);
+    const look = ahead.clone(); look.y += onStairs * .3 - .05; const gal = smooth(span(p.x, 19, 21)) * (1 - smooth(span(p.x, 31, 33.2))); look.z += Math.sin((p.x - 19) / 12.5 * Math.PI * 1.5) * 1.5 * gal;
     // near the end of the walk the gaze settles on the screen
     const g = smooth(span(t, T.walk[1] - 1.6, T.walk[1])); look.lerp(SCR, g);
     // sit down, look at the screen, lean in
@@ -134,19 +170,19 @@ export function run({ host, SND, done }) {
     pos.lerp(SCR, smooth(span(t, T.sit[1], T.push[0])) * .2);
     // the push ends on the prompt line, so the site opens on the same command
     const kp = eio(span(t, T.push[0], T.push[1])); pos.lerp(tmp.set(SCR.x - .12, SCR.y - .18, SCR.z - .3), kp); if (ks > 0) look.lerp(SCR, ks); if (kp > 0) look.lerp(tmp2.set(SCR.x, SCR.y - .18, SCR.z - .3), kp);
-    return { pos, look, fov: mix(mobile ? 66 : 54, 26, kp), stepPh: ph }; }
+    return { pos, look, fov: mix(mobile ? 66 : 54, 26, kp), stepPh: ph, walking }; }
   // ---------------------------------------------------------------- post
   const composer = new EffectComposer(renderer); composer.addPass(new RenderPass(scene, cam)); const bloom = new UnrealBloomPass(new THREE.Vector2(W0, H0), .7, .6, .78); composer.addPass(bloom); composer.addPass(new OutputPass());
   const resize = () => { const w = innerWidth, h = innerHeight; renderer.setSize(w, h); composer.setSize(w, h); cam.aspect = w / h; cam.updateProjectionMatrix(); }; addEventListener('resize', resize);
   const fade = document.createElement('div'); fade.className = 'i3f'; host.appendChild(fade);
   // ---------------------------------------------------------------- run
-  let t0 = 0, raf = 0, over = false, lastStep = -1, lastScr = 0, lastLine = -1, fired = {};
+  let t0 = 0, raf = 0, over = false, lastStep = -1, lastScr = 0, lastLine = -1, lastNow = 0, lookS = null, fired = {};
   const once = (k, fn) => { if (!fired[k]) { fired[k] = 1; fn(); } };
   function frame(now) { if (over) return; raf = requestAnimationFrame(frame); if (!t0) t0 = now; const t = window.__i3dT ?? (now - t0) / 1000;
-    const c = camAt(t); cam.position.copy(c.pos); cam.lookAt(c.look); if (Math.abs(cam.fov - c.fov) > .01) { cam.fov = c.fov; cam.updateProjectionMatrix(); }
-    const st = Math.floor(c.stepPh); if (t < T.walk[1] - .3 && st !== lastStep) { lastStep = st; const p = c.pos; SND.tick(p.x > 8.6 && p.x < 15.8 ? .06 : .05, p.x > 8.6 ? 520 + Math.random() * 120 : 300 + Math.random() * 60); }
-    if (t > 3.0) once('turn', () => SND.whoosh(.5, .04, false)); if (t > 4.3) once('door', () => { SND.blip(160, .04, .3); SND.droneLevel(.05, 2); });
-    if (t > 7.1) once('wh', () => { SND.whoosh(1.2, .05, true); SND.droneLevel(.08, 2); }); if (t > T.sit[1] - .1) once('sit', () => SND.thump(.3));
+    const c = camAt(t), dt = Math.min(.1, (now - (lastNow || now)) / 1000); lastNow = now; if (!lookS || window.__i3dT != null) lookS = c.look.clone(); else lookS.lerp(c.look, 1 - Math.exp(-dt * 7)); cam.position.copy(c.pos); cam.lookAt(lookS); if (Math.abs(cam.fov - c.fov) > .01) { cam.fov = c.fov; cam.updateProjectionMatrix(); }
+    const st = Math.floor(c.stepPh); if (c.walking > .5 && st !== lastStep) { lastStep = st; const p = c.pos; SND.tick(p.x > 8.6 && p.x < 15.8 ? .06 : .05, p.x > 8.6 ? 520 + Math.random() * 120 : 300 + Math.random() * 60); }
+    if (t > 3.3) once('turn', () => SND.whoosh(.5, .04, false)); if (t > 4.75) once('door', () => { SND.blip(160, .04, .3); SND.droneLevel(.05, 2); });
+    if (t > 7.7) once('wh', () => { SND.whoosh(1.2, .05, true); SND.droneLevel(.08, 2); }); if (t > T.sit[1] - .1) once('sit', () => SND.thump(.3));
     if (t > T.power) once('pw', () => { SND.blip(1200, .04); SND.tick(.1, 1900); }); if (t > T.push[0]) once('push', () => SND.whoosh(1.4, .12, true));
     glow.intensity = t > T.power ? 6 * eout(span(t, T.power, T.power + .5)) : 0; keyLed.material.color.setHex(t > T.boot[0] ? 0x1c2a22 : 0x0c0c0c);
     if (t > T.boot[0] && t < T.boot[1]) { const li = Math.floor(span(t, T.boot[0], T.boot[1]) * 15); if (li !== lastLine) { lastLine = li; SND.tick(.025, 2200 + li * 60); } }

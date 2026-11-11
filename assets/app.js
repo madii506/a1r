@@ -53,7 +53,7 @@
     $('#top').innerHTML = `<span class="dots"><i></i><i></i><i></i></span><a class="brand" href="#/">${CRATE}A1R</a><span class="ttl" id="ttl">a1r@dropzone: ~</span>
       <div class="right"><button class="ib" id="sbtn" title="sound (s)"></button><button class="ib" id="tbtn" title="console (\`)">&gt;_</button><button class="ib" id="wbtn">connect</button></div>`;
     document.body.insertAdjacentHTML('beforeend', `<nav id="nav" class="tmux"><span class="ses">[a1r]</span>${NAV.map(([k, h, l], i) => `<a href="${h}" data-k="${k}" title="${l}">${i + 1}:${k}</a>`).join('')}<span class="tr" id="tclock"></span></nav>`);
-    const clock = () => { const el = $('#tclock'); if (el) el.textContent = `${DAYS_SINCE()}d "coming soon" · ${new Date().toISOString().slice(11, 16)} utc`; }; clock(); setInterval(clock, 20000);
+    const clock = () => { const el = $('#tclock'); if (el) el.textContent = `? keys · ${DAYS_SINCE()}d "coming soon" · ${new Date().toISOString().slice(11, 16)} utc`; }; clock(); setInterval(clock, 20000);
     $('#wbtn').onclick = () => WL.pk ? disconnect() : connect(); $('#tbtn').onclick = () => term.toggle(); $('#sbtn').onclick = () => { SND.set(!SND.on); paintSnd(); if (SND.on) SND.droneOn(.04); };
     paintSnd(); paintWallet();
   }
@@ -157,12 +157,12 @@
       await step('drop', 'batches', async () => [`18 SOL or 6 coin transfers a tx · ≤ ${R().maxRecipients} wallets · ≥ ${R().minSol} SOL`, 'ok']);
       await step('snap', 'manifest', async () => { const s = sv(); return s.snapAt ? [`${fmt(s.holders, 0)} read · ${fmt(s.eligible, 0)} seated · ${ago(s.snapAt)} · next ${nextSnap(s)}`, 'ok'] : [s.mint || (s.fleet || []).length ? 'first read on the next visit' : 'first read when $A1R is live', '..']; });
       await step('read', 'holder reader', async () => { const s = sv(), mint = s.mint || ((s.fleet || [])[0] || {}).mint; if (!mint) return ['waits for $A1R · try it now: scan <mint>', '..']; const r = await api('scan', '&mint=' + mint); return [`${fmt(r.holders, 0)} holders · ${fmt(r.offCurve, 0)} ${r.offCurve === 1 ? 'pool' : 'pools'} left out · ${r.ms} ms`, 'ok']; });
-      await step('sim', 'drop dry-run', async () => { if (!sv().operator) return ['waits for the operator · try it now: pane 10', '..']; const r = await api('sim'), x = r.runs[0]; return [x.err ? x.err.slice(0, 64) : `mainnet ok · ${fmt(x.units, 0)} cu · ${x.bytes} bytes`, x.err ? '!!' : 'ok']; });
+      await step('sim', 'drop dry-run', async () => { if (!sv().operator) return ['waits for the operator · try it now: pane 12', '..']; const r = await api('sim'), x = r.runs[0]; return [x.err ? x.err.slice(0, 64) : `mainnet ok · ${fmt(x.units, 0)} cu · ${x.bytes} bytes`, x.err ? '!!' : 'ok']; });
       await step('chain', 'tag history', async () => { const c = await api('chain'); return [`${c.length} a1r memos on chain`, 'ok']; });
       await step('hold', 'operator wallet', async () => { if (!sv().operator) return ['opens when A1R launches', '..']; const h = S.hold || await api('hold'); return [`≈ $${fmt(h.usd, 2)} · ${h.items.length} coins · ${fmt(h.fees, 4)} SOL fees`, 'ok']; });
       await step('drops', 'landed', async () => { const s = sv(); return [`${s.drops || 0} drops · ${fmt(s.walletsHit || 0, 0)} wallets · ${fmt(s.solDropped || 0, 3)} SOL`, 'ok']; });
       await step('watch', 'pump.fun airdrop', async () => [`${DAYS_SINCE()} days "coming soon"`, '!!']);
-      if (!alive) return; row('ready', `boot ok in ${((performance.now() - t0) / 1000).toFixed(2)}s · type help in pane 13 · keys 1-8`, 'rd'); $('#logm') && ($('#logm').textContent = 'tail -f');
+      if (!alive) return; row('ready', `boot ok in ${((performance.now() - t0) / 1000).toFixed(2)}s · shell in pane 15 · [ ] move panes · ? keys`, 'rd'); $('#logm') && ($('#logm').textContent = 'tail -f');
       // tail -f: the RPC every 15 seconds, the engine whenever it changes
       let last = { snapAt: sv().snapAt, drops: sv().drops };
       ivs.push(setInterval(async () => { if (document.hidden || !alive) return; const r = row('rpc', dots('slot', 17)); try { const p = await pingNet(); set(r, `${p.slot.toLocaleString('en-US')} · ${p.ms} ms`, 'ok'); } catch (e) { set(r, 'no answer', '!!'); } }, 15000));
@@ -204,9 +204,26 @@
     let q = 0; const io = new IntersectionObserver(es => { es.filter(e => e.isIntersecting).forEach(e => { io.unobserve(e.target); const d = q++ * 70; setTimeout(() => { e.target.classList.add('on'); q = Math.max(0, q - 1); }, d); }); }, { threshold: .08 });
     P.forEach(p => io.observe(p)); const fb = setTimeout(() => P.forEach(p => p.classList.add('on')), 4000); return () => { io.disconnect(); clearTimeout(fb); }; }
 
+  // htop-style meters under the system bar, every one from live data
+  const meter = (k, frac, txt, cls) => { const n = 16, f = Math.round(Math.max(0, Math.min(1, frac || 0)) * n); return `<div class="mt${cls ? ' ' + cls : ''}"><span class="k">${k}</span><span class="mb">[<i>${'|'.repeat(f)}</i><s>${'·'.repeat(n - f)}</s>]</span><b>${txt}</b></div>`; };
+  function paintMeters() { const el = $('#mtr'); if (!el) return; const s = S.status || {}, R = s.rules || RDEF, L = (S.holders && S.holders.list) || [], D = S.drops || [];
+    const per = R.snapEveryMin * 60e3, since = s.snapAt ? Date.now() - s.snapAt : 0, left = Math.max(0, per - since), mm = Math.floor(left / 60e3), ss = Math.floor(left / 1000) % 60;
+    const ms = L.map(x => x.a ? x.a.m : Math.max(1, ...Object.values(x.f || {}).map(y => y.m || 1))), avg = ms.length ? ms.reduce((a, b) => a + b, 0) / ms.length : 0, landed = D.filter(d => d.status === 'landed').length;
+    el.innerHTML = meter('seats', (s.eligible || 0) / R.maxRecipients, `${fmt(s.eligible || 0, 0)} / ${R.maxRecipients} a drop`) + meter('snapshot', s.snapAt ? since / per : 0, s.snapAt ? (left ? `next in ${mm}:${String(ss).padStart(2, '0')}` : 'due now') : 'waits for $A1R', s.snapAt ? '' : 'w')
+      + meter('clock', avg ? (avg - 1) / (R.maxMult - 1) : 0, avg ? `avg ${avg.toFixed(2)}x of ${R.maxMult}x` : '—') + meter('flights', D.length ? landed / D.length : 0, `${landed} / ${D.length} landed`); }
+  // how the manifest is spread: clocks in buckets, and how much the top wallets weigh
+  function histHTML(L, R) { if (!L.length) return '<div class="dim">nobody on the manifest yet.</div>'; const B = [[1, 1.5], [1.5, 2], [2, 2.5], [2.5, R.maxMult + .001]], m = x => x.a ? x.a.m : Math.max(1, ...Object.values(x.f || {}).map(y => y.m || 1));
+    const c = B.map(([a, b]) => L.filter(x => m(x) >= a && m(x) < b).length), mx = Math.max(1, ...c), top = n => L.slice(0, n).reduce((a, x) => a + x.pct, 0);
+    return `<div class="hist">${B.map(([a, b], i) => `<div class="hr"><span class="k">${i ? '' : 'clock'}</span><span class="lb">${a.toFixed(1)}-${Math.min(b, R.maxMult).toFixed(1)}x</span><span class="hb" style="--w:${Math.round(c[i] / mx * 100)}%"></span><b>${c[i]}</b></div>`).join('')}
+      ${[1, 10, 100].map((n, i) => `<div class="hr"><span class="k">${i ? '' : 'weight'}</span><span class="lb">top ${n}</span><span class="hb g" style="--w:${Math.round(top(n) * 100)}%"></span><b>${pct(top(n), 1)}</b></div>`).join('')}</div><div class="dim" style="font-size:11px;margin-top:10px">from the top ${L.length} wallets on the manifest</div>`; }
+  // every a1r memo the chain holds on the tag address: the ledger, straight from Solana
+  async function chainLog(el, meta) { try { const rows = await api('chain'); if (!el.isConnected) return; if (meta) meta.textContent = rows.length + ' memos';
+      el.innerHTML = rows.length ? `<table class="tbl"><tr><th>time</th><th>memo</th><th class="r">tx</th></tr>${rows.slice(0, 9).map(r => `<tr><td class="dim">${r.at ? new Date(r.at * 1000).toISOString().slice(5, 16).replace('T', ' ') : '—'}</td><td class="mono">${esc(r.memo.slice(0, 46))}</td><td class="r"><a class="lk" target="_blank" rel="noopener" href="${solscan('tx', r.sig)}">${short(r.sig, 4)} ↗</a></td></tr>`).join('')}</table>` : '<div class="dim">no a1r memos on chain yet. the first drop writes here.</div>'; }
+    catch (e) { if (el.isConnected) el.innerHTML = `<div class="st-bad">[ !! ] ${esc(e.message)}</div>`; } }
+
   V.zone = async m => {
     const s = S.status || {}, R = s.rules || RDEF, days = DAYS_SINCE();
-    m.innerHTML = `<section class="tdash"><div class="sysbar" id="sys">${sysHTML()}</div><div class="tgrid">
+    m.innerHTML = `<section class="tdash"><div class="sysbar" id="sys">${sysHTML()}</div><div class="meters" id="mtr"></div><div class="tgrid">
       ${pane(1, 'p-log', 'boot.log', ['logm', 'running'], '<div class="blog" id="log"></div>', 'every line is a real check · real timings')}
       ${pane(2, 'p-crate', 'crate', ['', 'drag to spin'], `<div class="stage" id="stage"><canvas></canvas></div><div class="ca">${s.mint ? `<button id="cab">$A1R ${short(s.mint, 6)} · copy</button>` : `<span class="dim">$A1R · not live yet</span>`}</div>`)}
       ${pane(3, 'p-stats', 'status', ['', 'live'], [['drops landed', 'drops'], ['wallets hit', 'walletsHit'], ['SOL dropped', 'solDropped'], ['coins dropped', 'coinsDropped'], ['on the manifest', 'eligible'], ['boarding', 'boarding']].map(([k, f]) => `<div class="kvl"><span class="k">${dots(k, 16)}</span><span class="flap" data-f="${f}"></span></div>`).join(''))}
@@ -216,14 +233,16 @@
       ${pane(7, 'p-pipe', 'pipeline', ['', 'how one drop moves'], pipeHTML(s), 'click a stage to read its rule')}
       ${pane(8, 'p-board', 'board', ['bm', ''], '<div id="zdrops"></div>', '<a href="#/board">./board --all →</a>')}
       ${pane(9, 'p-top', 'manifest', ['tm', ''], '<div id="ztop"></div>', '<a href="#/radar">./radar →</a>')}
-      ${pane(10, 'p-scan', 'scan', ['', 'the reader, on any coin'], `<form class="scanf" id="scf"><span><span class="ps">a1r@dropzone</span>:~$ ./scan</span><input id="scq" placeholder="paste a coin's mint" spellcheck="false" autocomplete="off"><button class="btn sm">run</button></form><div class="chips sct" id="sct"></div><div class="scs" id="scs"><span class="dim">the same reader A1R runs every ${R.snapEveryMin} minutes: every holder, straight from the token program.</span></div><div class="scr" id="scr"></div>`, 'read-only · nothing is saved, signed or sent')}
-      ${pane(11, 'p-receipts', 'receipts.log', ['', PROMISE.length + 1 + ' entries'], PROMISE.map(([d, who, txt, src, n]) => `<div class="rl"><span class="dim">${d}</span><span class="who">${who}</span><span class="tx">${txt}</span><a class="lk dim" target="_blank" rel="noopener" href="${src}">${n} ↗</a></div>`).join('') + `<div class="rl now"><span>today</span><span class="who">A1R</span><span class="tx">${days} days later, we built the airdrop ourselves.</span><a class="lk" href="#/promise">more</a></div>`)}
-      ${pane(12, 'p-rules', 'man a1r', ['', 'v1'], [['seat', `hold ${R.minHoldPct}% of $A1R or one of our coins`], ['weight', `share × clock (+${R.fleetWeight}x for our coins)`], ['clock', `1x → ${R.maxMult}x over ${R.multDays} days · selling resets`], ['cargo', 'dev buys of our launches + $A1R fees'], ['drop', 'straight to your wallet · nothing to claim'], ['snap', `every ${R.snapEveryMin} min · pools and curves left out`], ['batch', `≤ ${R.maxRecipients} wallets a drop · heaviest first`], ['dust', `slices under ${R.minSol} SOL roll over`], ['proof', 'memo + tag on every batch'], ['resume', 'failed batches rebuilt · nobody paid twice'], ['launch', 'one signature on pump.fun · dev buy = cargo']].map(([k, v]) => `<div class="kvl"><span class="k">${dots(k, 9)}</span><span>${v}</span></div>`).join(''), '<a href="#/how">man a1r --full →</a>')}
-      ${pane(13, 'p-term', 'shell', ['', 'tab completes · ↑↓ history'], '<div id="homeTerm"></div>')}
+      ${pane(10, 'p-chain', 'chain.log', ['chm', ''], '<div id="chl"><div class="dim">reading the tag address…</div></div>', 'getSignaturesForAddress(tag) · live')}
+      ${pane(11, 'p-hist', 'weights', ['', 'how the manifest is spread'], '<div id="hst"><div class="dim">reading the manifest…</div></div>')}
+      ${pane(12, 'p-scan', 'scan', ['', 'the reader, on any coin'], `<form class="scanf" id="scf"><span><span class="ps">a1r@dropzone</span>:~$ ./scan</span><input id="scq" placeholder="paste a coin's mint" spellcheck="false" autocomplete="off"><button class="btn sm">run</button></form><div class="chips sct" id="sct"></div><div class="scs" id="scs"><span class="dim">the same reader A1R runs every ${R.snapEveryMin} minutes: every holder, straight from the token program.</span></div><div class="scr" id="scr"></div>`, 'read-only · nothing is saved, signed or sent')}
+      ${pane(13, 'p-receipts', 'receipts.log', ['', PROMISE.length + 1 + ' entries'], PROMISE.map(([d, who, txt, src, n]) => `<div class="rl"><span class="dim">${d}</span><span class="who">${who}</span><span class="tx">${txt}</span><a class="lk dim" target="_blank" rel="noopener" href="${src}">${n} ↗</a></div>`).join('') + `<div class="rl now"><span>today</span><span class="who">A1R</span><span class="tx">${days} days later, we built the airdrop ourselves.</span><a class="lk" href="#/promise">more</a></div>`)}
+      ${pane(14, 'p-rules', 'man a1r', ['', 'v1'], [['seat', `hold ${R.minHoldPct}% of $A1R or one of our coins`], ['weight', `share × clock (+${R.fleetWeight}x for our coins)`], ['clock', `1x → ${R.maxMult}x over ${R.multDays} days · selling resets`], ['cargo', 'dev buys of our launches + $A1R fees'], ['drop', 'straight to your wallet · nothing to claim'], ['snap', `every ${R.snapEveryMin} min · pools and curves left out`], ['batch', `≤ ${R.maxRecipients} wallets a drop · heaviest first`], ['dust', `slices under ${R.minSol} SOL roll over`], ['proof', 'memo + tag on every batch'], ['resume', 'failed batches rebuilt · nobody paid twice'], ['launch', 'one signature on pump.fun · dev buy = cargo']].map(([k, v]) => `<div class="kvl"><span class="k">${dots(k, 9)}</span><span>${v}</span></div>`).join(''), '<a href="#/how">man a1r --full →</a>')}
+      ${pane(15, 'p-term', 'shell', ['', 'tab completes · ↑↓ history'], '<div id="homeTerm"></div>')}
     </div></section>`;
     const stops = [heroCrate($('#stage')), clockChart($('#clk'))], logEl = $('#log');
     const begin = () => { if (!logEl.isConnected) return; stops.push(dashLog(logEl), revealPanes(m)); };   // the boot starts when you land, not under the intro
-    const sysT = setInterval(paintSys, 1000); stops.push(() => clearInterval(sysT)); paintSys();
+    const sysT = setInterval(() => { paintSys(); paintMeters(); }, 1000); stops.push(() => clearInterval(sysT)); paintSys(); paintMeters(); chainLog($('#chl'), $('#chm')); const chT = setInterval(() => !document.hidden && chainLog($('#chl'), $('#chm')), 60000); stops.push(() => clearInterval(chT));
     heroStop = () => stops.forEach(f => f && f()); term.dock($('#homeTerm')); scanPane($('.p-scan', m));
     $$('.pipe .stg', m).forEach(x => x.onclick = () => { SND.tick(.03, 1800); go('#/how'); setTimeout(() => { const t = document.getElementById(x.dataset.r); if (t) (lenis ? lenis.scrollTo(t, { offset: -110 }) : t.scrollIntoView({ behavior: 'smooth' })); }, 450); });
     const flaps = () => { const st = S.status || {}; $$('.p-stats .flap[data-f]').forEach((el, i) => { const f = el.dataset.f, v = st[f] ?? 0; setTimeout(() => A.flap(el, f === 'solDropped' ? fmt(v, 3) : fmt(v, 0), { sound: i < 2 }), i * 90); }); A.flap($('#theirs'), String(days), { stag: 90, dur: 1000 }); };
@@ -231,7 +250,7 @@
     api('hold').then(h => { if (!$('#hv')) return; S.hold = h; const has = h.usd > 0 || h.fees > 0 || h.items.length; $('#hv').textContent = has ? '$' + fmt(h.usd, 2) : (s.operator ? '$0' : '—');
       $('#hl').innerHTML = has ? [...h.items.map(x => `${fmt(x.ui)} ${esc(x.symbol ? '$' + x.symbol : short(x.mint))}${x.usd != null ? ` <span class="dim">≈ $${fmt(x.usd, 2)}</span>` : ''}`), h.fees > 0 ? `${fmt(h.fees, 4)} SOL of $A1R creator fees, unclaimed` : ''].filter(Boolean).join('<br>') : s.operator ? 'empty. it fills when we launch the next coin.' : 'opens when A1R launches.'; }).catch(() => { if ($('#hl')) $('#hl').textContent = 'could not read the hold right now.'; });
     if ($('#cab')) $('#cab').onclick = () => copy(s.mint, 'Contract address');
-    const [drops, hol] = await Promise.all([loadDrops(), loadHolders(20)]); if (!$('#zdrops')) return;
+    const [drops, hol] = await Promise.all([loadDrops(), loadHolders(300)]); if (!$('#zdrops')) return; paintMeters(); $('#hst').innerHTML = histHTML(hol.list || [], (S.status || {}).rules || RDEF);
     $('#bm').textContent = `${drops.length} flights`; $('#zdrops').innerHTML = boardHTML(drops.slice(0, 6), true); wireBoard($('#zdrops'));
     $('#tm').textContent = hol.eligible ? `${fmt(hol.eligible, 0)} seated` : '';
     $('#ztop').innerHTML = hol.list && hol.list.length ? `<table class="tbl"><tr><th>seat</th><th>wallet</th><th class="r">weight</th><th class="r">clock</th></tr>${hol.list.slice(0, 7).map(h => `<tr class="c" data-w="${h.w}"><td>#${h.rank}</td><td>${short(h.w)}</td><td class="r"><span class="bar" style="--w:${Math.round(h.pct / hol.list[0].pct * 100)}%"></span>${pct(h.pct)}</td><td class="r">${h.a ? h.a.m.toFixed(2) + 'x' : '—'}</td></tr>`).join('')}</table>` : `<div class="dim" style="padding:8px 0">nobody on the manifest yet.</div>`;
@@ -481,7 +500,7 @@
     await render(V[k] ? k : 'zone', arg); }
   async function render(k, arg) { if (heroStop) { heroStop(); heroStop = null; } if (radarStop) { radarStop(); radarStop = null; } closeDrawer();
     $$('#nav a').forEach(a => a.classList.toggle('on', a.dataset.k === k)); const m = $('#main'); m.innerHTML = '<div class="prompt" id="prm"></div><div class="view"></div>'; lenis ? lenis.scrollTo(0, { immediate: true }) : scrollTo({ top: 0 });
-    m.classList.toggle('wide', k === 'zone'); const vw = $('.view', m), ni = NAV.findIndex(x => x[0] === k); if (k !== 'zone') { vw.classList.add('win'); vw.dataset.n = ni + 1; vw.dataset.t = '~/' + k; }
+    fx = -1; m.classList.toggle('wide', k === 'zone'); const vw = $('.view', m), ni = NAV.findIndex(x => x[0] === k); if (k !== 'zone') { vw.classList.add('win'); vw.dataset.n = ni + 1; vw.dataset.t = '~/' + k; }
     const sw = $('#sweep'); if (sw) { sw.classList.remove('go'); void sw.offsetWidth; sw.classList.add('go'); }
     const cmd = { zone: './a1r --status', promise: 'cat receipts.log', board: './board --all', pass: './pass ' + (arg ? short(decodeURIComponent(arg), 4) : '--me'), radar: './radar --live', fleet: 'ls ./fleet', how: 'man a1r', ops: 'sudo ./cockpit' }[k] || k;
     $('#ttl').textContent = `a1r@dropzone: ~/${k === 'zone' ? '' : k}`; $('#prm').innerHTML = `<span class="ps">a1r@dropzone</span>:<span class="pd">~${k === 'zone' ? '' : '/' + k}</span>$ <span class="pc"></span><span class="cur">█</span>`;
@@ -489,7 +508,11 @@
     if (k !== 'zone') term.undock();
     try { await V[k]($('.view', m), arg && decodeURIComponent(arg)); } catch (e) { $('.view', m).innerHTML = `<div class="empty">${esc(e.message)}</div>`; } }
   addEventListener('hashchange', route); addEventListener('resize', movePill);
-  addEventListener('keydown', e => { if (e.target.closest('input,textarea,select')) return; if (window.AI && window.AI.active) return; if (e.key === '`') { e.preventDefault(); term.toggle(); return; }
+  let fx = -1; const keysHTML = () => `<h3 class="h2">keys</h3><div class="keys">${[['1 - 8', 'switch pages'], ['[  ]', 'move between panes'], ['enter', 'open the focused pane'], ['`', 'console'], ['s', 'sound on / off'], ['esc', 'close'], ['?', 'this list']].map(([k, v]) => `<div class="kvl"><span class="k">${dots(k, 9)}</span><span>${v}</span></div>`).join('')}</div>`;
+  addEventListener('keydown', e => { if (e.target.closest('input,textarea,select')) return; if (window.AI && window.AI.active) return;
+    if (e.key === '?') { openDrawer(keysHTML()); return; }
+    if ((e.key === ']' || e.key === '[') && $('.tgrid')) { const P = $$('.tgrid .pane'); fx = (fx + (e.key === ']' ? 1 : -1) + P.length) % P.length; P.forEach((p, i) => p.classList.toggle('fx', i === fx)); const t = P[fx]; lenis ? lenis.scrollTo(t, { offset: -140 }) : t.scrollIntoView({ block: 'center', behavior: 'smooth' }); SND.tick(.02, 2000 + fx * 60); return; }
+    if (e.key === 'Enter' && fx >= 0) { const P = $$('.tgrid .pane'), a = P[fx] && $('.pf a', P[fx]); if (a) { a.click(); return; } } if (e.key === '`') { e.preventDefault(); term.toggle(); return; }
     if (e.key === 's') { SND.set(!SND.on); paintSnd(); return; } if (e.key === 'Escape') { closeDrawer(); term.toggle(false); return; } const n = +e.key; if (n >= 1 && n <= NAV.length) go(NAV[n - 1][1]); });
   document.addEventListener('a1r-audio', () => { if (SND.on && !(window.AI && window.AI.active)) SND.droneOn(.035); });
 

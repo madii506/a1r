@@ -77,7 +77,7 @@
   const key = e => { if (['Enter', 'Escape', ' '].includes(e.key)) { e.preventDefault(); SND.whoosh(.5, .08, true); finish(true); } };
   const paintSnd = () => { const b = el.querySelector('.snd'); if (b) b.textContent = SND.on ? 'sound on' : 'sound off'; };
   el.querySelector('.skip').onclick = e => { e.stopPropagation(); SND.wake(); finish(true); };
-  el.querySelector('.snd').onclick = e => { e.stopPropagation(); SND.set(!SND.on); if (SND.on) SND.droneOn(.06); paintSnd(); };
+
   el.addEventListener('pointerdown', () => { SND.wake(); if (SND.on) SND.droneOn(.06); });
   addEventListener('keydown', key); addEventListener('resize', () => { if (!done) { size(); STARS = null; } });
   document.addEventListener('a1r-audio', () => { if (SND.on && !done) SND.droneOn(.06); });
@@ -85,6 +85,6 @@
   // the 3D walk (street, stairs, warehouse, the PC) when the browser has WebGL; the ASCII crate drop when it doesn't
   let S3 = null; const start2d = () => { cv.style.display = ''; A.crateReady.then(() => { if (!done) raf = requestAnimationFrame(frame); }); };
   const gl = (() => { try { const c = document.createElement('canvas'); return !!(c.getContext('webgl2') || c.getContext('webgl')); } catch (e) { return false; } })();
-  if (gl && !window.__no3d) { cv.style.display = 'none'; import('/assets/intro3d.js?v=2').then(m => { if (done) return; S3 = m.run({ host: el, SND, done: () => finish() }); window.AI.s3 = S3; }).catch(() => start2d()); } else start2d();
+  if (gl && !window.__no3d) { cv.style.display = 'none'; import('/assets/intro3d.js?v=3').then(m => { if (done) return; S3 = m.run({ host: el, SND, done: () => finish() }); window.AI.s3 = S3; }).catch(() => start2d()); } else start2d();
   window.AI.time = v => { t0 = performance.now() - v * 1000; };   // for still frames while testing
 })();
