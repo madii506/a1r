@@ -208,6 +208,13 @@ async function scan(m) { const mint = pk(m, 'that is not a mint address').toBase
   const ms = Date.now() - t0, info = (await jupInfo([mint]))[mint] || {};
   return { mint, program: h.program === T22.toBase58() ? 'token-2022' : 'token', decimals: h.decimals, supply: h.supply, accounts: h.accounts, offCurve: h.offCurve, holders: L.length, eligible: el.length, ms, at: Date.now(), ref: { symbol: info.symbol || null, name: info.name || null, icon: info.icon || null, holders: info.holders ?? null },
     top: el.slice(0, 12).map(([w, sh, ui]) => ({ w, sh, ui, of1: tw ? sh / tw : 0 })) }; }); }
+// the warehouse gallery: pump.fun coins that went the highest, each with the image CID its pump.fun page and Jupiter both show (checked 2026-11-11)
+const ART = { PNUT: 'QmNdTtJauw39u4DzGyTaZ35rRx4VgAxqb91wE89zjyHWd2', GOAT: 'QmapAq9WtNrtyaDtjZPAHHNYmpSZAQU6HywwvfSWq4dQVV', FARTCOIN: 'QmQr3Fz4h1etNsF7oLGMRHiCzhB5y9a7GjyodnF7zLHK1g',
+  MOODENG: 'Qmf1g7dJZNDJHRQru7E7ENwDjcvu7swMUB6x9ZqPXr4RV2', ACT: 'QmUfrHNLqia7NmqgbzHYGF4rtX75nEwukPFFU1YscKKquL', BILLY: 'QmdRU5EkGt1VsgLsXJdHK5kjojQqggQHjhyqeJwmApR53R' };
+const art = t => { const cid = ART[String(t || '').toUpperCase()]; if (!cid) throw new Error('no such painting'); return memo('art:' + cid, 86400e3, async () => {
+  for (const u of [`https://pump.mypinata.cloud/ipfs/${cid}`, `https://ipfs.io/ipfs/${cid}`, `https://gateway.pinata.cloud/ipfs/${cid}`]) { try { const r = await fetch(u, { signal: AbortSignal.timeout(9000) }), type = r.headers.get('content-type') || '';
+      if (r.ok && /^image\//.test(type)) { const buf = Buffer.from(await r.arrayBuffer()); if (buf.length && buf.length < 4e6) return { type, buf }; } } catch { } }
+  throw new Error('that image is not reachable right now'); }); };
 // a few live pump.fun coins to try the reader on (from Jupiter's trending list; small enough to read in a second)
 const trending = () => memo('trend', 300e3, async () => { const j = await getJ(`${JUP}/tokens/v2/toptrending/1h?limit=60`).catch(() => []);
   return (j || []).filter(t => /pump/i.test(t.launchpad || '') && t.holderCount >= 80 && t.holderCount <= 4000).slice(0, 6).map(t => ({ mint: t.id, symbol: t.symbol, icon: t.icon || null, holders: t.holderCount })); });
@@ -252,6 +259,7 @@ module.exports = async (req, res) => {
       if (a === 'hold') return out(res, 200, await hold(), 'public, max-age=30');
       if (a === 'ping') return out(res, 200, await ping(), 'public, max-age=3, s-maxage=4');
       if (a === 'scan') return out(res, 200, await scan(q.mint), 'public, max-age=30, s-maxage=60');
+      if (a === 'art') { const im = await art(q.t); res.statusCode = 200; res.setHeader('content-type', im.type); res.setHeader('access-control-allow-origin', '*'); res.setHeader('cache-control', 'public, max-age=86400, s-maxage=604800, immutable'); return res.end(im.buf); }
       if (a === 'trending') return out(res, 200, await trending(), 'public, max-age=60, s-maxage=300');
       if (a === 'sim') return out(res, 200, await sim(q), 'public, max-age=15, s-maxage=30');
       return out(res, 400, { error: 'unknown action' });
