@@ -58,7 +58,7 @@ export function run({ host, SND, done }) {
   const stairL = new THREE.PointLight(0xcfe0ff, 10, 9, 1.6); stairL.position.set(12.5, 7, -26); scene.add(stairL); box(.6, .06, .2, new THREE.MeshBasicMaterial({ color: 0xe6f0ff, toneMapped: false }), 12.5, 7.75, -26);
 
   // ---------------------------------------------------------------- the warehouse
-  const concrete = M(0x17181b, .92); const floor = new THREE.Mesh(new THREE.PlaneGeometry(22, 30), concrete); floor.rotation.x = -Math.PI / 2; floor.position.set(29, FLOOR + .001, -26); scene.add(floor);
+  const concrete = M(0x1a1b1e, .62, .12); const floor = new THREE.Mesh(new THREE.PlaneGeometry(22, 30), concrete); floor.rotation.x = -Math.PI / 2; floor.position.set(29, FLOOR + .001, -26); scene.add(floor);
   const wh = M(0x141519, .95); box(.3, 9, 30, wh, 39.9, FLOOR + 4.5, -26); box(22, 9, .3, wh, 29, FLOOR + 4.5, -40.9); box(22, 9, .3, wh, 29, FLOOR + 4.5, -11.1);
   box(.3, 9, 13.9, wh, 18.1, FLOOR + 4.5, -34.05); box(.3, 9, 13.9, wh, 18.1, FLOOR + 4.5, -17.95); box(.3, 6.4, 2.2, wh, 18.1, FLOOR + 5.8, -26); box(22, .3, 30, wh, 29, FLOOR + 9, -26);
   for (let x = 20; x < 40; x += 4) box(.25, .45, 30, M(0x101114, .8, .3), x, FLOOR + 8.6, -26);
@@ -73,37 +73,35 @@ export function run({ host, SND, done }) {
   for (const x of [22.5, 28.5, 34]) { box(.03, 3.4, .03, shadeM, x, FLOOR + 7.3, -26); const sh = new THREE.Mesh(new THREE.ConeGeometry(.55, .45, 20, 1, true), shadeM); sh.position.set(x, FLOOR + 5.4, -26); scene.add(sh); box(.3, .05, .3, hot, x, FLOOR + 5.2, -26);
     const S = new THREE.SpotLight(0xffe0b0, 80, 15, .85, .7, 1.4); S.position.set(x, FLOOR + 5.15, -26); S.target.position.set(x, FLOOR, -26); scene.add(S, S.target);
     const F = new THREE.PointLight(0xffd8a8, 9, 11, 1.5); F.position.set(x, FLOOR + 4.6, -26); scene.add(F); }
-  // ---------------------------------------------------------------- the gallery: pump.fun coins that went to the moon, painted as moons
-  // original paintings: the ticker, the fact, the date. No logos or mascots, those belong to their makers.
-  const GAL = [['PNUT', 'peaked above $2B', 'nov 2024', 28], ['GOAT', 'first pump.fun coin past $1B', '2024', 205], ['FARTCOIN', 'passed $1B', 'dec 2024', 95], ['CHILLGUY', 'hit $600M', 'nov 2024', 190],
-    ['MOODENG', 'above $300M', '2024', 330], ['ACT', '+1,720% on its binance listing', 'nov 2024', 265], ['BILLY', 'pump.fun\'s no. 2 at $100M+', '2024', 45]];
-  const paintings = [];
-  function painting(c, [tk, line, date, hue], big) { const g = c.getContext('2d'), w = c.width, h = c.height; let sd = 7 + tk.length * 977 + hue * 31; const r = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
-    const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, `hsl(${hue},42%,${big ? 9 : 13}%)`); gr.addColorStop(.6, `hsl(${(hue + 25) % 360},38%,8%)`); gr.addColorStop(1, `hsl(${(hue + 40) % 360},30%,5%)`); g.fillStyle = gr; g.fillRect(0, 0, w, h);
-    g.lineCap = 'round'; for (let k = 0; k < (big ? 2200 : 1100); k++) { const x = r() * w, y = r() * h * .72, l = 6 + r() * w / 12, a = (r() - .5) * .9; g.strokeStyle = `hsla(${hue + (r() - .5) * 50},${35 + r() * 35}%,${18 + r() * 34}%,${.05 + r() * .12})`; g.lineWidth = 1.5 + r() * w / 90; g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + l * .5, y + (r() - .5) * 10, x + Math.cos(a) * l, y + Math.sin(a) * l); g.stroke(); }
-    for (let k = 0; k < 90; k++) { g.fillStyle = `rgba(255,250,235,${.2 + r() * .6})`; const sz = r() < .1 ? 2.4 : 1.3; g.fillRect(r() * w, r() * h * .6, sz, sz); }
-    // the moon, in ASCII, lit from the upper left, with craters
-    const cx = w * .5, cy = h * (big ? .38 : .36), R = Math.min(w, h) * (big ? .24 : .28), cs = Math.max(8, Math.round(w / 56)), ramp = ' .,:;-=+*#%@'; const cr = Array.from({ length: 6 }, () => [(r() - .5) * 1.2, (r() - .5) * 1.2, .12 + r() * .18]);
-    const glow = g.createRadialGradient(cx, cy, R * .8, cx, cy, R * 1.9); glow.addColorStop(0, `hsla(${hue + 30},60%,70%,.22)`); glow.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = glow; g.fillRect(0, 0, w, h);
-    g.font = `700 ${Math.round(cs * 1.15)}px "JB", ui-monospace, monospace`; g.textAlign = 'center'; g.textBaseline = 'middle';
-    for (let y = cy - R; y <= cy + R; y += cs * 1.2) for (let x = cx - R; x <= cx + R; x += cs * .82) { const dx = (x - cx) / R, dy = (y - cy) / R, d2 = dx * dx + dy * dy; if (d2 > 1) continue;
-      let L = Math.max(0, -dx * .5 - dy * .55 + Math.sqrt(1 - d2) * .75); for (const [ux, uy, ur] of cr) { const q = Math.hypot(dx - ux, dy - uy) / ur; if (q < 1) L *= .55 + .45 * q; }
-      g.fillStyle = `hsla(${hue + 35},${25 + L * 25}%,${48 + L * 46}%,${.3 + L * .7})`; g.fillText(ramp[Math.min(ramp.length - 1, Math.floor(L * ramp.length))], x, y); }
-    // the facts
-    const T1 = big ? tk : '$' + tk, fs = big ? 150 : Math.min(104, Math.floor(w * .9 / (T1.length * .64))); g.font = `700 ${fs}px "ID", "Inter", system-ui, sans-serif`; g.fillStyle = '#f3efe5'; g.fillText(T1, cx, h * (big ? .74 : .755));
-    g.font = `${big ? 34 : 21}px "JB", ui-monospace, monospace`; g.fillStyle = 'rgba(243,239,229,.82)'; g.fillText(line, cx, h * (big ? .855 : .865));
-    g.fillStyle = 'rgba(243,239,229,.45)'; g.font = `${big ? 24 : 16}px "JB", ui-monospace, monospace`; g.fillText(big ? date : date + ' · born on pump.fun', cx, h * (big ? .92 : .925));
-    const vg = g.createRadialGradient(cx, h / 2, Math.min(w, h) * .45, cx, h / 2, Math.max(w, h) * .78); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.55)'); g.fillStyle = vg; g.fillRect(0, 0, w, h); }
-  const frameM = M(0x2a2118, .55, .35), legM = M(0x1c1712, .7, .2), lightM = new THREE.MeshBasicMaterial({ color: 0xffe6c0, toneMapped: false });
-  function hang(data, x, y, z, ry, fw, fh, big, easel) { const c = document.createElement('canvas'); c.width = big ? 1024 : 512; c.height = Math.round(c.width * fh / fw); painting(c, data, big);
-    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; paintings.push([c, data, big, t]);
-    const grp = new THREE.Group(); grp.position.set(x, y, z); grp.rotation.y = ry; scene.add(grp);
-    box(fw + .14, fh + .14, .07, frameM, 0, 0, -.02, grp); const cv = new THREE.Mesh(new THREE.PlaneGeometry(fw, fh), M(0xffffff, .9, 0, { map: t, emissiveMap: t, emissive: new THREE.Color(0xffffff), emissiveIntensity: .62 })); cv.position.z = .02; grp.add(cv);
-    box(fw * .5, .035, .05, lightM, 0, fh / 2 + .13, .07, grp);
-    if (easel) { for (const sx of [-.42, .42]) { const lg = box(.06, y - FLOOR + fh / 2 - .1, .06, legM, sx * fw, -(y - FLOOR) / 2 + fh / 4 - .05, -.05, grp); lg.rotation.z = sx * -.04; } box(.05, y - FLOOR + .2, .05, legM, 0, -(y - FLOOR) / 2 + .1, -.45, grp).rotation.x = -.22; box(fw * .95, .05, .1, legM, 0, -fh / 2 - .06, .02, grp); } }
-  GAL.forEach((d, i) => { const right = i % 2 === 0, k = Math.floor(i / 2); hang(d, 21.6 + k * 3.1 + (right ? 0 : 1.55), FLOOR + 1.9, right ? -22.15 : -29.85, right ? Math.PI + .3 : -.3, 1.25, 1.56, false, true); });
-  const redraw = () => paintings.forEach(([c, d, big, t]) => { painting(c, d, big); t.needsUpdate = true; });
-  try { Promise.all([document.fonts.load('700 96px ID'), document.fonts.load('20px JB')]).then(redraw).catch(() => { }); } catch (e) { }
+  // ---------------------------------------------------------------- the gallery: the pump.fun coins that went the highest, hung on two white walls in the warehouse
+  // each print is the coin's own image (the one its pump.fun page shows), served by the A1R API; only the ticker sits on the placard below
+  const GAL = [['PNUT', 21.2, 1], ['GOAT', 24.4, 1], ['FARTCOIN', 27.6, 1], ['MOODENG', 27.4, -1], ['ACT', 30.4, -1], ['BILLY', 33.3, -1]];
+  const gwallM = M(0x8e8a83, .96, 0), frameK = M(0x0c0c0c, .45, .2), matM = M(0xb9b5ad, .95, 0), railM = M(0x161616, .5, .5), headM = new THREE.MeshBasicMaterial({ color: 0xfff1d6, toneMapped: false });
+  box(9.6, 3.7, .22, gwallM, 24.5, FLOOR + 1.85, -22.0); box(8.6, 3.7, .22, gwallM, 30.1, FLOOR + 1.85, -30.0);          // the two gallery walls, crates stacked behind them
+  box(9.6, .05, .06, railM, 24.5, FLOOR + 3.95, -22.9); box(8.6, .05, .06, railM, 30.1, FLOOR + 3.95, -29.1);              // track rails
+  const coneTex = tex(64, 256, (g, w, h) => { const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, 'rgba(255,236,200,.55)'); gr.addColorStop(1, 'rgba(255,236,200,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, h); });
+  const coneM = new THREE.MeshBasicMaterial({ map: coneTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: .07, side: THREE.DoubleSide, toneMapped: false });
+  const prints = [];
+  GAL.forEach(([tk, x, side]) => { const zW = side > 0 ? -22.0 - .12 : -30.0 + .12, ry = side > 0 ? Math.PI : 0, grp = new THREE.Group(); grp.position.set(x, FLOOR + 2.05, zW); grp.rotation.y = ry; scene.add(grp);
+    const S = 1.22, MAT = .16, FR = .05; box(S + MAT * 2 + FR * 2, S + MAT * 2 + FR * 2, .06, frameK, 0, 0, .03, grp); box(S + MAT * 2, S + MAT * 2, .02, matM, 0, 0, .065, grp);
+    const c = document.createElement('canvas'); c.width = c.height = 512; const g = c.getContext('2d'); g.fillStyle = '#1b1b1b'; g.fillRect(0, 0, 512, 512); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+    const img = new THREE.Mesh(new THREE.PlaneGeometry(S, S), M(0xffffff, .8, 0, { map: t, emissiveMap: t, emissive: new THREE.Color(0xffffff), emissiveIntensity: .1 })); img.position.z = .08; grp.add(img); prints.push([tk, c, t]);
+    // the placard: just the ticker
+    const pc = document.createElement('canvas'); pc.width = 512; pc.height = 128; const pt = new THREE.CanvasTexture(pc); pt.colorSpace = THREE.SRGBColorSpace; pt.anisotropy = 8; const drawP = () => { const q = pc.getContext('2d'); q.fillStyle = '#f4f1ea'; q.fillRect(0, 0, 512, 128); q.fillStyle = '#111'; q.font = '700 64px "ID", "Inter", system-ui, sans-serif'; q.textAlign = 'center'; q.textBaseline = 'middle'; q.fillText('$' + tk, 256, 68); pt.needsUpdate = true; }; drawP(); prints.push(['placard', drawP]);
+    const plq = new THREE.Mesh(new THREE.PlaneGeometry(.66, .165), M(0xffffff, .8, 0, { map: pt, emissiveMap: pt, emissive: new THREE.Color(0xffffff), emissiveIntensity: .05 })); plq.position.set(0, -(S / 2 + MAT + FR) - .26, .02); grp.add(plq);
+    // a track spot over each print, with its beam
+    const hx = .0, hy = 1.9, hz = .85; box(.09, .16, .09, railM, hx, hy, hz, grp); const lens = box(.07, .02, .07, headM, hx, hy - .09, hz, grp);
+    const beam = new THREE.Mesh(new THREE.ConeGeometry(.75, 1.7, 24, 1, true), coneM); beam.position.set(hx, hy - .95, hz - .38); beam.rotation.x = .42; grp.add(beam);
+    if (!mobile) { const L = new THREE.SpotLight(0xffeccd, 6, 6, .5, .7, 1.4); L.position.set(x, FLOOR + 3.95, zW + (side > 0 ? -.85 : .85)); L.target.position.set(x, FLOOR + 2.0, zW); scene.add(L, L.target); } });
+  // the images, cropped square like a print; until one loads its frame holds a dark print
+  prints.filter(p => p[0] !== 'placard').forEach(([tk, c, t]) => { const im = new Image(); im.crossOrigin = 'anonymous'; im.onload = () => { const g = c.getContext('2d'), s = Math.min(im.naturalWidth, im.naturalHeight); g.drawImage(im, (im.naturalWidth - s) / 2, (im.naturalHeight - s) / 2, s, s, 0, 0, 512, 512); t.needsUpdate = true; }; im.src = '/api/a1r?a=art&t=' + tk; });
+  try { document.fonts.load('700 64px ID').then(() => prints.forEach(p => p[0] === 'placard' && p[1]())).catch(() => { }); } catch (e) { }
+  // dust in the air, and moonlight falling from the high windows
+  const DN = mobile ? 260 : 700, dpos = new Float32Array(DN * 3), dsp = new Float32Array(DN); for (let i = 0; i < DN; i++) { dpos[i * 3] = 18.6 + rnd() * 21; dpos[i * 3 + 1] = FLOOR + rnd() * 8; dpos[i * 3 + 2] = -40.5 + rnd() * 29; dsp[i] = .03 + rnd() * .09; }
+  const dGeo = new THREE.BufferGeometry(); dGeo.setAttribute('position', new THREE.BufferAttribute(dpos, 3));
+  const dot = tex(32, 32, (g) => { const gr = g.createRadialGradient(16, 16, 0, 16, 16, 16); gr.addColorStop(0, 'rgba(255,240,215,1)'); gr.addColorStop(1, 'rgba(255,240,215,0)'); g.fillStyle = gr; g.fillRect(0, 0, 32, 32); });
+  const dust = new THREE.Points(dGeo, new THREE.PointsMaterial({ size: .045, map: dot, transparent: true, opacity: .5, depthWrite: false, blending: THREE.AdditiveBlending, color: 0xffe8c8 })); scene.add(dust);
+  const dustTick = dt => { const a = dGeo.attributes.position.array; for (let i = 0; i < DN; i++) { a[i * 3 + 1] += dsp[i] * dt; a[i * 3] += Math.sin((a[i * 3 + 1] + i) * .7) * .004; if (a[i * 3 + 1] > FLOOR + 8) a[i * 3 + 1] = FLOOR; } dGeo.attributes.position.needsUpdate = true; };
 
   // the desk, the PC, the chair
   const deskM = M(0x151618, .5, .25); box(1.3, .05, 2, deskM, DX, FLOOR + .74, -26); for (const zz of [-26.9, -25.1]) box(1.2, .72, .05, M(0x0f1012, .6), DX, FLOOR + .36, zz);
@@ -173,12 +171,13 @@ export function run({ host, SND, done }) {
   // ---------------------------------------------------------------- post
   const composer = new EffectComposer(renderer); composer.addPass(new RenderPass(scene, cam)); const bloom = new UnrealBloomPass(new THREE.Vector2(W0, H0), .7, .6, .78); composer.addPass(bloom); composer.addPass(new OutputPass());
   const resize = () => { const w = innerWidth, h = innerHeight; renderer.setSize(w, h); composer.setSize(w, h); cam.aspect = w / h; cam.updateProjectionMatrix(); }; addEventListener('resize', resize);
+  const vig = document.createElement('div'); vig.className = 'i3v'; host.appendChild(vig);
   const fade = document.createElement('div'); fade.className = 'i3f'; host.appendChild(fade);
   // ---------------------------------------------------------------- run
   let t0 = 0, raf = 0, over = false, lastStep = -1, lastScr = 0, lastLine = -1, lastNow = 0, lookS = null, fired = {};
   const once = (k, fn) => { if (!fired[k]) { fired[k] = 1; fn(); } };
   function frame(now) { if (over) return; raf = requestAnimationFrame(frame); if (!t0) t0 = now; const t = window.__i3dT ?? (now - t0) / 1000;
-    const c = camAt(t), dt = Math.min(.1, (now - (lastNow || now)) / 1000); lastNow = now; if (!lookS || window.__i3dT != null) lookS = c.look.clone(); else lookS.lerp(c.look, 1 - Math.exp(-dt * 7)); cam.position.copy(c.pos); cam.lookAt(lookS); if (Math.abs(cam.fov - c.fov) > .01) { cam.fov = c.fov; cam.updateProjectionMatrix(); }
+    const c = camAt(t), dt = Math.min(.1, (now - (lastNow || now)) / 1000); lastNow = now; dustTick(dt || .016); if (!lookS || window.__i3dT != null) lookS = c.look.clone(); else lookS.lerp(c.look, 1 - Math.exp(-dt * 7)); cam.position.copy(c.pos); cam.lookAt(lookS); if (Math.abs(cam.fov - c.fov) > .01) { cam.fov = c.fov; cam.updateProjectionMatrix(); }
     const st = Math.floor(c.stepPh); if (c.walking > .5 && st !== lastStep) { lastStep = st; const p = c.pos; SND.tick(p.x > 8.6 && p.x < 15.8 ? .06 : .05, p.x > 8.6 ? 520 + Math.random() * 120 : 300 + Math.random() * 60); }
     if (t > 3.3) once('turn', () => SND.whoosh(.5, .04, false)); if (t > 4.75) once('door', () => { SND.blip(160, .04, .3); SND.droneLevel(.05, 2); });
     if (t > 7.7) once('wh', () => { SND.whoosh(1.2, .05, true); SND.droneLevel(.08, 2); }); if (t > T.sit[1] - .1) once('sit', () => SND.thump(.3));

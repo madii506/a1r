@@ -259,6 +259,9 @@ main,.view,.sec,.grid2>*,.grid3>*,.ops>*{min-width:0}
 #intro .i3d{position:absolute;inset:0;width:100%!important;height:100%!important;display:block}
 #intro .i3f{position:absolute;inset:0;background:#000;pointer-events:none;opacity:1}
 #intro .skip,#intro .snd{z-index:3}
+#intro .i3v{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at center,rgba(0,0,0,0) 52%,rgba(0,0,0,.6) 100%)}
+#intro .i3v::after{content:'';position:absolute;inset:-50%;opacity:.07;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");animation:grain .9s steps(5) infinite}
+@keyframes grain{0%{transform:translate(0,0)}20%{transform:translate(-4%,3%)}40%{transform:translate(3%,-5%)}60%{transform:translate(-6%,-2%)}80%{transform:translate(5%,4%)}100%{transform:translate(0,0)}}
 /* ================================================================ terminal mode */
 :root{--disp:JB,ui-monospace,monospace;--r:3px}
 .h1{font-weight:700;letter-spacing:-.04em}.h2{font-weight:700;letter-spacing:-.03em}
