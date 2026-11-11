@@ -1,5 +1,5 @@
-// A1R intro in 3D, first person and without a word: you walk down a street at night, turn right into a building, climb the stairs
-// into a warehouse full of crates, sit down at the one PC that's on, and get pulled into its screen.
+// A1R intro in 3D, first person: you walk down a street at night, turn right into a building, climb the stairs into a warehouse
+// full of crates, sit down at the one PC that's on, watch A1R boot on its screen, and get pulled in.
 import * as THREE from './vendor/three.module.min.js';
 import { EffectComposer } from './vendor/EffectComposer.js';
 import { RenderPass } from './vendor/RenderPass.js';
@@ -8,7 +8,7 @@ import { OutputPass } from './vendor/OutputPass.js';
 
 const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v)), mix = (a, b, k) => a + (b - a) * k, span = (t, a, b) => clamp((t - a) / (b - a));
 const eio = k => k < .5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2, eout = k => 1 - Math.pow(1 - k, 3), smooth = k => k * k * (3 - 2 * k);
-const T = { walk: [0.25, 9.4], sit: [9.25, 10.15], power: 10.3, boot: [10.45, 11.9], push: [11.75, 13.15], end: 13.25 };
+const T = { walk: [0.25, 9.4], sit: [9.25, 10.15], power: 9.8, boot: [10.0, 12.75], push: [12.45, 13.95], end: 14.05 };
 const DX = 35.6, FLOOR = 3.6;   // the desk's x, the warehouse floor
 
 export function run({ host, SND, done }) {
@@ -83,18 +83,39 @@ export function run({ host, SND, done }) {
   const glow = new THREE.PointLight(0xcfe8ff, 0, 5, 2); glow.position.set(DX - .2, FLOOR + 1.1, -26); scene.add(glow);
   const deskLamp = new THREE.PointLight(0xffd9a8, 3, 4, 2); deskLamp.position.set(DX + .1, FLOOR + 1.4, -27.1); scene.add(deskLamp); box(.12, .08, .12, hot, DX + .1, FLOOR + 1.32, -27.1);
 
-  // ---------------------------------------------------------------- the screen: it wakes up and boots a terminal made of glyphs
-  const GL = '!<>-_/[]{}=+*^?#%@$0123456789abcdefABCDEF', lines = Array.from({ length: 40 }, () => ({ w: 8 + Math.floor(rnd() * 40), ok: rnd() < .8 }));
-  function drawScreen(t) { const k = span(t, T.power, T.power + .25), b = span(t, T.boot[0], T.boot[1]); sg.fillStyle = '#020302'; sg.fillRect(0, 0, SW, SH);
+  // ---------------------------------------------------------------- the screen: it wakes up and boots A1R, the same log the site opens on
+  const MONO = '"JB", ui-monospace, Menlo, monospace'; try { document.fonts && document.fonts.load('20px JB'); } catch (e) { }
+  const sh = (w, n = 4) => w ? w.slice(0, n) + '…' + w.slice(-n) : '';
+  const DAYS = Math.max(0, Math.floor((Date.now() - Date.UTC(2025, 6, 9)) / 86400e3));
+  let SL = null; const screenLines = () => { const s = (window.A1R && window.A1R.S && window.A1R.S.status) || {}, R = s.rules || { maxMult: 3, multDays: 14, minHoldPct: .01, maxRecipients: 400 };
+    const L = [['h', 'A1R v1 · dropzone · ' + new Date().toISOString().slice(0, 16).replace('T', ' ') + ' utc'],
+      ['ok', 'load ', 'snapshot reader', 'token program · pools out'], ['ok', 'load ', 'holder clocks', `1x → ${R.maxMult}x over ${R.multDays} days`],
+      ['ok', 'load ', 'weights', 'share × clock'], ['ok', 'load ', 'seat rule', `hold ≥ ${R.minHoldPct}% of a supply`],
+      ['ok', 'load ', 'drop builder', `18 SOL · 6 coin per tx · ≤ ${R.maxRecipients}`], ['ok', 'load ', 'proof', 'memo + tag ' + (s.tag ? sh(s.tag) : 'on every batch')],
+      ['ok', 'load ', 'recovery', 'resume from chain, never twice'], ['ok', 'load ', 'cockpit', 'pump.fun launch, one signature'],
+      ['ok', 'mount', 'drop ledger', s.storage === false ? 'offline' : 'online'],
+      [s.mint ? 'ok' : '..', 'token', '$A1R', s.mint ? sh(s.mint, 5) : 'not live yet'], [s.operator ? 'ok' : '..', 'wallet', 'operator', s.operator ? sh(s.operator, 5) : 'not set yet'],
+      ['ok', 'drops', 'landed', `${s.drops || 0} · ${s.walletsHit || 0} wallets`], ['!!', 'watch', 'pump.fun airdrop', `${DAYS} days "coming soon"`],
+      ['p', './a1r --status']]; return L; };
+  function drawScreen(t) { const k = span(t, T.power, T.power + .25), b = span(t, T.boot[0], T.boot[1]); sg.fillStyle = '#030403'; sg.fillRect(0, 0, SW, SH);
     if (t < T.power) { scrT.needsUpdate = true; return; }
     if (k < 1) { const h = Math.max(2, SH * eout(k) * .9 * (1 - k)), w = SW * Math.min(1, k * 3); sg.fillStyle = '#e8ffe8'; sg.fillRect((SW - w) / 2, (SH - h) / 2, w, h + 2); scrT.needsUpdate = true; return; }
-    sg.font = '22px monospace'; sg.textBaseline = 'top'; const n = Math.floor(b * 22);
-    for (let i = 0; i < Math.min(n, 18); i++) { const L = lines[i + Math.max(0, n - 18)], y = 24 + i * 30; sg.fillStyle = L.ok ? '#8af0b4' : '#e9e9e9'; sg.fillText('>', 24, y); sg.fillStyle = 'rgba(230,230,230,.85)';
-      let s = ''; for (let j = 0; j < L.w; j++) s += GL[(i * 31 + j * 7 + Math.floor(t * 3)) % GL.length]; sg.fillText(s, 52, y); }
-    const pw = (SW - 120) * eio(b); sg.strokeStyle = 'rgba(255,255,255,.4)'; sg.strokeRect(60, SH - 60, SW - 120, 18); sg.fillStyle = '#e9e9e9'; sg.fillRect(62, SH - 58, Math.max(0, pw - 4), 14);
-    if (Math.floor(t * 3) % 2) { sg.fillStyle = '#e9e9e9'; sg.fillRect(52 + (n % 9) * 13, 24 + Math.min(n, 18) * 30, 12, 22); }
-    const fl = span(t, T.push[1] - .55, T.push[1]); if (fl > 0) { sg.fillStyle = `rgba(0,0,0,${fl})`; sg.fillRect(0, 0, SW, SH); }
-    sg.fillStyle = 'rgba(255,255,255,.03)'; for (let y = (t * 90) % 5; y < SH; y += 5) sg.fillRect(0, y, SW, 1); scrT.needsUpdate = true; }
+    if (!SL) SL = screenLines(); sg.textBaseline = 'middle';
+    // title bar and tmux bar, like the site
+    sg.fillStyle = '#0c0c0c'; sg.fillRect(0, 0, SW, 40); sg.fillStyle = '#2a2a2a'; for (let i = 0; i < 3; i++) { sg.beginPath(); sg.arc(26 + i * 20, 20, 6, 0, 7); sg.fill(); }
+    sg.font = `600 17px ${MONO}`; sg.fillStyle = '#ececec'; sg.fillText('A1R', 96, 21); sg.font = `15px ${MONO}`; sg.fillStyle = '#8b8b8b'; sg.textAlign = 'center'; sg.fillText('a1r@dropzone: ~', SW / 2, 21); sg.textAlign = 'left';
+    sg.fillStyle = '#0c0c0c'; sg.fillRect(0, SH - 34, SW, 34); sg.fillStyle = '#8af0b4'; sg.fillRect(12, SH - 28, 54, 22); sg.font = `14px ${MONO}`; sg.fillStyle = '#000'; sg.fillText('[a1r]', 17, SH - 16);
+    ['1:zone*', '2:promise', '3:board', '4:pass', '5:radar', '6:fleet', '7:how', '8:ops'].forEach((x, i) => { const X = 78 + i * 92; if (!i) { sg.fillStyle = '#b8b8b8'; sg.fillRect(X - 6, SH - 28, 82, 22); } sg.fillStyle = i ? '#8b8b8b' : '#000'; sg.fillText(x, X, SH - 16); });
+    // the log, typed line by line
+    const n = b * SL.length, top = 64, lh = 31; sg.font = `18px ${MONO}`;
+    for (let i = 0; i < SL.length && i < n; i++) { const L = SL[i], y = top + i * lh, part = Math.min(1, n - i), cut = s => s.slice(0, Math.ceil(s.length * part));
+      if (L[0] === 'h') { sg.fillStyle = '#6b6b6b'; sg.fillText(cut(L[1]), 28, y); continue; }
+      if (L[0] === 'p') { sg.fillStyle = '#8af0b4'; sg.fillText('a1r@dropzone', 28, y); sg.fillStyle = '#9ab6ff'; sg.fillText(':~', 28 + 12 * 10.85, y); sg.fillStyle = '#ececec'; const c = cut('$ ' + L[1]); sg.fillText(c, 28 + 14 * 10.85, y); if (Math.floor(t * 3) % 2) { sg.fillStyle = '#a8a8a8'; sg.fillRect(28 + (14 + c.length) * 10.85 + 2, y - 10, 11, 21); } continue; }
+      const st = L[0], col = st === 'ok' ? '#8af0b4' : st === '!!' ? '#ff7a7a' : '#8b8b8b'; sg.fillStyle = col; sg.fillText(`[ ${st} ]`, 28, y);
+      sg.fillStyle = '#9ab6ff'; sg.fillText(L[1], 112, y); const lab = L[2] + ' ' + '.'.repeat(Math.max(2, 22 - L[2].length)); sg.fillStyle = '#6b6b6b'; sg.fillText(cut(lab), 196, y);
+      if (part >= 1) { sg.fillStyle = st === '!!' ? '#ff9a9a' : '#ececec'; sg.fillText(L[3], 196 + 24 * 10.85, y); } }
+    const fl = span(t, T.push[1] - .5, T.push[1]); if (fl > 0) { sg.fillStyle = `rgba(0,0,0,${fl})`; sg.fillRect(0, 0, SW, SH); }
+    sg.fillStyle = 'rgba(255,255,255,.025)'; for (let y = (t * 90) % 4; y < SH; y += 4) sg.fillRect(0, y, SW, 1); scrT.needsUpdate = true; }
 
   // ---------------------------------------------------------------- the walk: down the street, right into the door, up the stairs, through the warehouse
   const path = new THREE.CatmullRomCurve3([[0, 1.7, -4], [0, 1.7, -12], [0, 1.7, -19.5], [.9, 1.7, -24.2], [3.6, 1.7, -25.85], [6.6, 1.7, -26], [8.7, 1.72, -26], [12.3, 3.55, -26], [15.7, 5.3, -26], [18.2, 5.3, -26], [23, 5.3, -26], [28.5, 5.3, -26], [DX - 1.15, 5.3, -26]].map(p => new THREE.Vector3(...p)), false, 'centripetal', .5);
@@ -110,14 +131,16 @@ export function run({ host, SND, done }) {
     const g = smooth(span(t, T.walk[1] - 1.6, T.walk[1])); look.lerp(SCR, g);
     // sit down, look at the screen, lean in
     const ks = eio(span(t, T.sit[0], T.sit[1])); pos.lerp(tmp.set(DX - .95, FLOOR + 1.22, -26), ks); pos.y -= Math.sin(span(t, T.sit[1] - .1, T.sit[1] + .35) * Math.PI) * .03;
-    const kp = eio(span(t, T.push[0], T.push[1])); pos.lerp(tmp.set(SCR.x - .12, SCR.y, SCR.z), kp); if (ks > 0) look.lerp(SCR, ks);
+    pos.lerp(SCR, smooth(span(t, T.sit[1], T.push[0])) * .2);
+    // the push ends on the prompt line, so the site opens on the same command
+    const kp = eio(span(t, T.push[0], T.push[1])); pos.lerp(tmp.set(SCR.x - .12, SCR.y - .18, SCR.z - .3), kp); if (ks > 0) look.lerp(SCR, ks); if (kp > 0) look.lerp(tmp2.set(SCR.x, SCR.y - .18, SCR.z - .3), kp);
     return { pos, look, fov: mix(mobile ? 66 : 54, 26, kp), stepPh: ph }; }
   // ---------------------------------------------------------------- post
   const composer = new EffectComposer(renderer); composer.addPass(new RenderPass(scene, cam)); const bloom = new UnrealBloomPass(new THREE.Vector2(W0, H0), .7, .6, .78); composer.addPass(bloom); composer.addPass(new OutputPass());
   const resize = () => { const w = innerWidth, h = innerHeight; renderer.setSize(w, h); composer.setSize(w, h); cam.aspect = w / h; cam.updateProjectionMatrix(); }; addEventListener('resize', resize);
   const fade = document.createElement('div'); fade.className = 'i3f'; host.appendChild(fade);
   // ---------------------------------------------------------------- run
-  let t0 = 0, raf = 0, over = false, lastStep = -1, lastScr = 0, fired = {};
+  let t0 = 0, raf = 0, over = false, lastStep = -1, lastScr = 0, lastLine = -1, fired = {};
   const once = (k, fn) => { if (!fired[k]) { fired[k] = 1; fn(); } };
   function frame(now) { if (over) return; raf = requestAnimationFrame(frame); if (!t0) t0 = now; const t = window.__i3dT ?? (now - t0) / 1000;
     const c = camAt(t); cam.position.copy(c.pos); cam.lookAt(c.look); if (Math.abs(cam.fov - c.fov) > .01) { cam.fov = c.fov; cam.updateProjectionMatrix(); }
@@ -126,6 +149,7 @@ export function run({ host, SND, done }) {
     if (t > 7.1) once('wh', () => { SND.whoosh(1.2, .05, true); SND.droneLevel(.08, 2); }); if (t > T.sit[1] - .1) once('sit', () => SND.thump(.3));
     if (t > T.power) once('pw', () => { SND.blip(1200, .04); SND.tick(.1, 1900); }); if (t > T.push[0]) once('push', () => SND.whoosh(1.4, .12, true));
     glow.intensity = t > T.power ? 6 * eout(span(t, T.power, T.power + .5)) : 0; keyLed.material.color.setHex(t > T.boot[0] ? 0x1c2a22 : 0x0c0c0c);
+    if (t > T.boot[0] && t < T.boot[1]) { const li = Math.floor(span(t, T.boot[0], T.boot[1]) * 15); if (li !== lastLine) { lastLine = li; SND.tick(.025, 2200 + li * 60); } }
     if (now - lastScr > 33) { lastScr = now; drawScreen(t); }
     bloom.strength = .7 + span(t, T.push[0], T.push[1]) * .4;
     fade.style.opacity = String(t < .7 ? 1 - t / .7 : t > T.push[1] - .2 ? span(t, T.push[1] - .2, T.end) : 0);
