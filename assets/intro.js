@@ -85,6 +85,6 @@
   // the 3D walk (street, stairs, warehouse, the PC) when the browser has WebGL; the ASCII crate drop when it doesn't
   let S3 = null; const start2d = () => { cv.style.display = ''; A.crateReady.then(() => { if (!done) raf = requestAnimationFrame(frame); }); };
   const gl = (() => { try { const c = document.createElement('canvas'); return !!(c.getContext('webgl2') || c.getContext('webgl')); } catch (e) { return false; } })();
-  if (gl && !window.__no3d) { cv.style.display = 'none'; import('/assets/intro3d.js?v=5').then(m => { if (done) return; S3 = m.run({ host: el, SND, done: () => finish() }); window.AI.s3 = S3; }).catch(() => start2d()); } else start2d();
+  if (gl && !window.__no3d) { cv.style.display = 'none'; import('/assets/intro3d.js?v=6').then(m => { if (done) return; S3 = m.run({ host: el, SND, done: () => finish() }); window.AI.s3 = S3; }).catch(() => start2d()); } else start2d();
   window.AI.time = v => { t0 = performance.now() - v * 1000; };   // for still frames while testing
 })();

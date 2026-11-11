@@ -83,18 +83,20 @@ export function run({ host, SND, done }) {
   const coneM = new THREE.MeshBasicMaterial({ map: coneTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: .07, side: THREE.DoubleSide, toneMapped: false });
   const prints = [];
   GAL.forEach(([tk, x, side]) => { const zW = side > 0 ? -22.0 - .12 : -30.0 + .12, ry = side > 0 ? Math.PI : 0, grp = new THREE.Group(); grp.position.set(x, FLOOR + 2.05, zW); grp.rotation.y = ry; scene.add(grp);
-    const S = 1.22, MAT = .16, FR = .05; box(S + MAT * 2 + FR * 2, S + MAT * 2 + FR * 2, .06, frameK, 0, 0, .03, grp); box(S + MAT * 2, S + MAT * 2, .02, matM, 0, 0, .065, grp);
-    const c = document.createElement('canvas'); c.width = c.height = 512; const g = c.getContext('2d'); g.fillStyle = '#1b1b1b'; g.fillRect(0, 0, 512, 512); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
-    const img = new THREE.Mesh(new THREE.PlaneGeometry(S, S), M(0xffffff, .8, 0, { map: t, emissiveMap: t, emissive: new THREE.Color(0xffffff), emissiveIntensity: .1 })); img.position.z = .08; grp.add(img); prints.push([tk, c, t]);
+    // frame, mat and print are unit pieces scaled to the image's own shape once it loads, so nothing is cropped
+    const MAT = .16, FR = .05, fr = box(1, 1, .06, frameK, 0, 0, .03, grp), mt = box(1, 1, .02, matM, 0, 0, .065, grp), t = new THREE.Texture(); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+    const img = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), M(0x1b1b1b, .8, 0, { emissive: new THREE.Color(0xffffff), emissiveIntensity: 0 })); img.position.z = .08; grp.add(img);
+    const fit = (w, h) => { img.scale.set(w, h, 1); mt.scale.set(w + MAT * 2, h + MAT * 2, 1); fr.scale.set(w + MAT * 2 + FR * 2, h + MAT * 2 + FR * 2, 1); if (grp.userData.plq) grp.userData.plq.position.y = -(h / 2 + MAT + FR) - .24; }; fit(1.22, 1.22);
+    prints.push([tk, (im) => { const a = im.naturalWidth / im.naturalHeight, w = Math.min(2.1, 1.22 * a), h = w / a; t.image = im; t.needsUpdate = true; img.material.color.setHex(0xffffff); img.material.map = t; img.material.emissiveMap = t; img.material.emissiveIntensity = .1; img.material.needsUpdate = true; fit(w, h); }]);
     // the placard: just the ticker
     const pc = document.createElement('canvas'); pc.width = 512; pc.height = 128; const pt = new THREE.CanvasTexture(pc); pt.colorSpace = THREE.SRGBColorSpace; pt.anisotropy = 8; const drawP = () => { const q = pc.getContext('2d'); q.fillStyle = '#f4f1ea'; q.fillRect(0, 0, 512, 128); q.fillStyle = '#111'; q.font = '700 64px "ID", "Inter", system-ui, sans-serif'; q.textAlign = 'center'; q.textBaseline = 'middle'; q.fillText('$' + tk, 256, 68); pt.needsUpdate = true; }; drawP(); prints.push(['placard', drawP]);
-    const plq = new THREE.Mesh(new THREE.PlaneGeometry(.66, .165), M(0xffffff, .8, 0, { map: pt, emissiveMap: pt, emissive: new THREE.Color(0xffffff), emissiveIntensity: .05 })); plq.position.set(0, -(S / 2 + MAT + FR) - .26, .02); grp.add(plq);
+    const plq = new THREE.Mesh(new THREE.PlaneGeometry(.66, .165), M(0xffffff, .8, 0, { map: pt, emissiveMap: pt, emissive: new THREE.Color(0xffffff), emissiveIntensity: .05 })); plq.position.set(0, -(1.22 / 2 + MAT + FR) - .24, .02); grp.add(plq); grp.userData.plq = plq;
     // a track spot over each print, with its beam
     const hx = .0, hy = 1.9, hz = .85; box(.09, .16, .09, railM, hx, hy, hz, grp); const lens = box(.07, .02, .07, headM, hx, hy - .09, hz, grp);
     const beam = new THREE.Mesh(new THREE.ConeGeometry(.75, 1.7, 24, 1, true), coneM); beam.position.set(hx, hy - .95, hz - .38); beam.rotation.x = .42; grp.add(beam);
     if (!mobile) { const L = new THREE.SpotLight(0xffeccd, 6, 6, .5, .7, 1.4); L.position.set(x, FLOOR + 3.95, zW + (side > 0 ? -.85 : .85)); L.target.position.set(x, FLOOR + 2.0, zW); scene.add(L, L.target); } });
-  // the images, cropped square like a print; until one loads its frame holds a dark print
-  prints.filter(p => p[0] !== 'placard').forEach(([tk, c, t]) => { const im = new Image(); im.crossOrigin = 'anonymous'; im.onload = () => { const g = c.getContext('2d'), s = Math.min(im.naturalWidth, im.naturalHeight); g.drawImage(im, (im.naturalWidth - s) / 2, (im.naturalHeight - s) / 2, s, s, 0, 0, 512, 512); t.needsUpdate = true; }; im.src = '/api/a1r?a=art&t=' + tk; });
+  // the images, whole and uncropped; until one loads its frame holds a dark print
+  prints.filter(p => p[0] !== 'placard').forEach(([tk, show]) => { const im = new Image(); im.crossOrigin = 'anonymous'; im.onload = () => show(im); im.src = '/api/a1r?a=art&t=' + tk; });
   try { document.fonts.load('700 64px ID').then(() => prints.forEach(p => p[0] === 'placard' && p[1]())).catch(() => { }); } catch (e) { }
   // dust in the air, and moonlight falling from the high windows
   const DN = mobile ? 260 : 700, dpos = new Float32Array(DN * 3), dsp = new Float32Array(DN); for (let i = 0; i < DN; i++) { dpos[i * 3] = 18.6 + rnd() * 21; dpos[i * 3 + 1] = FLOOR + rnd() * 8; dpos[i * 3 + 2] = -40.5 + rnd() * 29; dsp[i] = .03 + rnd() * .09; }
