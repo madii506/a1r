@@ -49,14 +49,16 @@
   // ---------------------------------------------------------------- shell
   const NAV = [['zone', '#/', 'drop zone'], ['promise', '#/promise', 'the promise'], ['board', '#/board', 'board'], ['pass', '#/pass', 'boarding pass'], ['radar', '#/radar', 'radar'], ['fleet', '#/fleet', 'fleet'], ['how', '#/how', 'how'], ['ops', '#/ops', 'ops']];
   function shell() {
-    $('#top').innerHTML = `<a class="brand" href="#/">${CRATE}A1R<small>the airdrop they promised us</small></a><nav id="nav"><span class="pill"></span>${NAV.map(([k, h, l], i) => `<a href="${h}" data-k="${k}" title="${l} (${i + 1})">${k === 'zone' ? 'zone' : k}</a>`).join('')}</nav>
+    $('#top').innerHTML = `<span class="dots"><i></i><i></i><i></i></span><a class="brand" href="#/">${CRATE}A1R</a><span class="ttl" id="ttl">a1r@dropzone: ~</span>
       <div class="right"><button class="ib" id="sbtn" title="sound (s)"></button><button class="ib" id="tbtn" title="console (\`)">&gt;_</button><button class="ib" id="wbtn">connect</button></div>`;
     $('#foot').innerHTML = `<span>A1R · the airdrop they promised us</span><span>not affiliated with pump.fun · nothing here is financial advice</span><span><a class="lk" href="#/how">rules</a> · <a class="lk" href="#/board">ledger</a> · <a class="lk" id="tagl" target="_blank" rel="noopener" href="#">tag address ↗</a></span>`;
+    document.body.insertAdjacentHTML('beforeend', `<nav id="nav" class="tmux"><span class="ses">[a1r]</span>${NAV.map(([k, h, l], i) => `<a href="${h}" data-k="${k}" title="${l}">${i + 1}:${k}</a>`).join('')}<span class="tr" id="tclock"></span></nav>`);
+    const clock = () => { const el = $('#tclock'); if (el) el.textContent = `${DAYS_SINCE()}d "coming soon" · ${new Date().toISOString().slice(11, 16)} utc`; }; clock(); setInterval(clock, 20000);
     $('#wbtn').onclick = () => WL.pk ? disconnect() : connect(); $('#tbtn').onclick = () => term.toggle(); $('#sbtn').onclick = () => { SND.set(!SND.on); paintSnd(); if (SND.on) SND.droneOn(.04); };
     paintSnd(); paintWallet();
   }
   const paintSnd = () => { $('#sbtn').innerHTML = SND.on ? '♪' : '<s>♪</s>'; $('#sbtn').classList.toggle('on', false); };
-  function movePill() { const on = $('#nav a.on'), p = $('#nav .pill'); if (!on || !p) return; p.style.left = on.offsetLeft + 'px'; p.style.width = on.offsetWidth + 'px'; }
+  function movePill() { }
   function paintTicker() { const s = S.status || {}, it = [];
     it.push(`<span><span class="dot"></span>${s.live ? 'live' : 'getting ready'}</span>`);
     it.push(`<span>days since pump.fun's "airdrop coming soon": <b>${DAYS_SINCE()}</b></span>`);
@@ -119,31 +121,36 @@
     '  [ dev buy ]\n       |\n       v\n    .-----.\n    |#####|\n    \'-----\'',
     ' ▇▇▇▇▇▇▇  ×3.0\n ▇▇▇▇▇    ×2.2\n ▇▇▇      ×1.6\n ▇▇       ×1.0\n',
     '    .-""-.\n   /______\\\n    \\ || /\n    [####]\n  ___\\__/___'];
+  const dots = (k, n = 20) => k + ' ' + '.'.repeat(Math.max(2, n - k.length));
   V.zone = async m => {
     const s = S.status || {};
-    m.innerHTML = `<section class="hero"><div class="stage" id="stage"><canvas></canvas><span class="hint">drag to spin</span></div>
-      <h1 class="h1">the airdrop<br>they promised us.</h1>
-      <p class="sub">Every coin we launch drops a slice to the holders of $A1R and of our coins. Hold longer, get more. Nothing to claim.</p>
-      <div class="row cta"><a class="btn pri" href="#/pass">check my wallet →</a><a class="btn" href="#/board">every drop</a></div>
-      <div class="ca">${s.mint ? `<button id="cab">$A1R · <b>${short(s.mint, 6)}</b> · copy</button>` : `<span class="pill">$A1R · not live yet</span>`}</div></section>
-      <div class="stats">${[['drops landed', 'drops'], ['wallets hit', 'walletsHit'], ['SOL dropped', 'solDropped'], ['coins dropped', 'coinsDropped'], ['on the manifest', 'eligible']].map(([k, f]) => `<div class="stat"><div class="k">${k}</div><div class="v"><span class="flap" data-f="${f}"></span></div></div>`).join('')}</div>
-      <section class="sec"><div class="kick tc">the score</div><div class="vs"><div class="side"><div class="kick">pump.fun · "airdrop coming soon"</div><div class="big"><span class="flap" id="theirs"></span></div><div class="mut">days, and counting</div></div><div class="mid">vs</div>
-        <div class="side"><div class="kick">A1R · drops that landed</div><div class="big"><span class="flap" id="ours"></span></div><div class="mut">${s.drops ? 'and the board has every one' : 'the first one lands on the board'}</div></div></div></section>
-      <section class="sec"><div class="sec-h"><div><div class="kick">the receipts</div><div class="h2">they promised. we built.</div></div><a class="btn" href="#/promise">every receipt</a></div>${timelineHTML([PROMISE[0], PROMISE[2], PROMISE[5], PROMISE[6]], true)}</section>
-      <section class="sec"><div class="hold card" id="hold"><div class="kick">in the hold now</div><div class="hv" id="hv">—</div><div class="mut" id="hl">reading the operator wallet…</div></div></section>
-      <section class="sec"><div class="sec-h"><div><div class="kick">how a drop lands</div><div class="h2">four steps, all on-chain.</div></div><a class="btn" href="#/how">the full rules</a></div>
-        <div class="steps">${[['we launch a coin', 'Every coin we build launches on pump.fun with a dev buy.'], ['the dev buy is set aside', 'That buy is not for selling. It is the cargo for the next drop.'], ['size × time', 'A snapshot every 10 minutes. The longer you hold, the more you weigh: up to 3x.'], ['it lands in your wallet', 'Straight to your wallet, no claiming. Every batch has a memo you can check.']].map(([h, p], i) => `<div class="step"><div class="n">0${i + 1}</div><pre class="${i === 3 ? 'bob' : ''}">${esc(STEP_ART[i])}</pre><h4>${h}</h4><p>${p}</p></div>`).join('')}</div></section>
-      <section class="sec grid2"><div><div class="sec-h"><div class="h2">latest drops</div><a class="lk mut" href="#/board">the board →</a></div><div id="zdrops"></div></div>
-        <div><div class="sec-h"><div class="h2">top passengers</div><a class="lk mut" href="#/radar">radar →</a></div><div id="ztop"></div></div></section>`;
-    heroStop = heroCrate($('#stage')); revealOnScroll(m);
+    m.innerHTML = `<section class="tdash"><pre class="boot" id="boot"></pre>
+      <div class="panes">
+        <div class="pane p-crate"><div class="pt">crate</div><div class="stage" id="stage"><canvas></canvas><span class="hint">drag to spin</span></div><div class="ca">${s.mint ? `<button id="cab">$A1R ${short(s.mint, 6)} · copy</button>` : `<span class="dim">$A1R · not live yet</span>`}</div></div>
+        <div class="pane p-stats"><div class="pt">status</div>${[['drops landed', 'drops'], ['wallets hit', 'walletsHit'], ['SOL dropped', 'solDropped'], ['coins dropped', 'coinsDropped'], ['on the manifest', 'eligible']].map(([k, f]) => `<div class="kvl"><span class="k">${dots(k, 18)}</span><span class="flap" data-f="${f}"></span></div>`).join('')}
+          <div class="kvl hot"><span class="k">${dots('"coming soon"', 18)}</span><span class="flap" id="theirs"></span><span class="dim">&nbsp;days</span></div></div>
+        <div class="pane p-hold"><div class="pt">hold</div><div class="hv" id="hv">—</div><div class="mut" id="hl">reading the operator wallet…</div></div>
+        <div class="pane p-board"><div class="pt">board</div><div id="zdrops"></div><a class="more" href="#/board">./board --all →</a></div>
+        <div class="pane p-top"><div class="pt">manifest</div><div id="ztop"></div><a class="more" href="#/radar">./radar →</a></div>
+        <div class="pane p-receipts"><div class="pt">receipts.log</div>${PROMISE.map(([d, who, txt, src, n]) => `<div class="rl"><span class="dim">${d}</span><span class="who">${who}</span><span class="tx">${txt}</span><a class="lk dim" target="_blank" rel="noopener" href="${src}">${n}</a></div>`).join('')}<div class="rl now"><span>today</span><span class="who">A1R</span><span class="tx">${DAYS_SINCE()} days later, we built the airdrop ourselves.</span><a class="lk" href="#/promise">more</a></div></div>
+        <div class="pane p-rules"><div class="pt">man a1r</div><div class="kvl"><span class="k">${dots('seat', 10)}</span><span>hold ${(s.rules || {}).minHoldPct ?? .01}% of $A1R or one of our coins</span></div><div class="kvl"><span class="k">${dots('weight', 10)}</span><span>share × clock (+0.25x for our coins)</span></div><div class="kvl"><span class="k">${dots('clock', 10)}</span><span>1x → 3x over 14 days · selling resets</span></div><div class="kvl"><span class="k">${dots('cargo', 10)}</span><span>dev buys of our launches + $A1R fees</span></div><div class="kvl"><span class="k">${dots('drop', 10)}</span><span>straight to your wallet · nothing to claim</span></div><div class="kvl"><span class="k">${dots('proof', 10)}</span><span>memo + tag on every batch · <a class="lk" href="#/how">man a1r →</a></span></div></div>
+        <div class="pane p-term"><div class="pt">shell</div><div id="homeTerm"></div></div>
+      </div></section>`;
+    heroStop = heroCrate($('#stage')); term.dock($('#homeTerm'));
+    // the boot log, typed line by line
+    const L = [[`a1r v1 · ${new Date().toISOString().slice(0, 16).replace('T', ' ')} utc`, ''], [dots('storage'), s.storage ? 'online' : 'offline', s.storage ? 'ok' : '!!'], [dots('snapshot'), s.snapAt ? `${ago(s.snapAt)} · ${s.eligible} on the manifest` : 'first one at launch', s.snapAt ? 'ok' : '..'],
+      [dots('$A1R'), s.mint ? short(s.mint, 6) : 'not live yet', s.mint ? 'ok' : '..'], [dots('operator'), s.operator ? short(s.operator, 6) : 'not set yet', s.operator ? 'ok' : '..'], [dots('drops'), `${s.drops || 0} landed · ${s.walletsHit || 0} wallets hit · ${fmt(s.solDropped || 0, 3)} SOL`, 'ok'],
+      [dots('pump.fun airdrop'), `${DAYS_SINCE()} days "coming soon"`, '!!'], ['type help below, or press 1-8', '']];
+    const boot = $('#boot'); let li = 0; const typeLine = () => { if (!boot.isConnected || li >= L.length) return; const [a, b, st] = L[li++], row = document.createElement('div'); row.className = 'bl';
+      row.innerHTML = st ? `<span class="st-${st === 'ok' ? 'ok' : st === '!!' ? 'bad' : 'wait'}">[ ${st} ]</span> ${esc(a)} <b></b>` : `<span class="dim">${esc(a)}</span>`; boot.append(row); if (b) A.decrypt($('b', row), b, 260); SND.tick(.02, 2400 + li * 90); setTimeout(typeLine, 85); };
+    if (window.AI && window.AI.active) window.AI.onDone = () => { typeLine(); flaps(); }; else { typeLine(); setTimeout(() => flaps(), 300); }
     api('hold').then(h => { if (!$('#hv')) return; S.hold = h; const has = h.usd > 0 || h.fees > 0 || h.items.length; $('#hv').textContent = has ? '$' + fmt(h.usd, 2) : (s.operator ? '$0' : '—');
-      $('#hl').innerHTML = has ? [...h.items.map(x => `${fmt(x.ui)} ${esc(x.symbol ? '$' + x.symbol : short(x.mint))}${x.usd != null ? ` <span class="dim">≈ $${fmt(x.usd, 2)}</span>` : ''}`), h.fees > 0 ? `${fmt(h.fees, 4)} SOL of $A1R creator fees, unclaimed` : ''].filter(Boolean).join(' · ') + '<br><span class="dim">this is cargo for the next drops. it drops when the operator flies it.</span>' : s.operator ? 'The hold is empty. It fills when we launch the next coin.' : 'The hold opens when A1R launches.'; }).catch(() => { if ($('#hl')) $('#hl').textContent = 'could not read the hold right now.'; });
+      $('#hl').innerHTML = has ? [...h.items.map(x => `${fmt(x.ui)} ${esc(x.symbol ? '$' + x.symbol : short(x.mint))}${x.usd != null ? ` <span class="dim">≈ $${fmt(x.usd, 2)}</span>` : ''}`), h.fees > 0 ? `${fmt(h.fees, 4)} SOL of $A1R creator fees, unclaimed` : ''].filter(Boolean).join(' · ') + '<br><span class="dim">cargo for the next drops.</span>' : s.operator ? 'empty. it fills when we launch the next coin.' : 'opens when A1R launches.'; }).catch(() => { if ($('#hl')) $('#hl').textContent = 'could not read the hold right now.'; });
     if ($('#cab')) $('#cab').onclick = () => copy(s.mint, 'Contract address');
-    const flaps = () => { const st = S.status || {}; $$('.stats .flap').forEach((el, i) => { const f = el.dataset.f, v = st[f] ?? 0; setTimeout(() => A.flap(el, f === 'solDropped' ? fmt(v, 3) : fmt(v, 0)), i * 90); }); A.flap($('#theirs'), String(DAYS_SINCE()), { stag: 80, dur: 900 }); A.flap($('#ours'), String(st.drops ?? 0).padStart(3, '0'), { stag: 80, dur: 900 }); };
-    if (window.AI && window.AI.active) window.AI.onDone = flaps; else setTimeout(flaps, 200);
+    const flaps = () => { const st = S.status || {}; $$('.p-stats .flap[data-f]').forEach((el, i) => { const f = el.dataset.f, v = st[f] ?? 0; setTimeout(() => A.flap(el, f === 'solDropped' ? fmt(v, 3) : fmt(v, 0), { sound: i < 2 }), i * 90); }); A.flap($('#theirs'), String(DAYS_SINCE()), { stag: 80, dur: 900 }); };
     const [drops, hol] = await Promise.all([loadDrops(), loadHolders(20)]); if (!$('#zdrops')) return;
     $('#zdrops').innerHTML = boardHTML(drops.slice(0, 5), true); wireBoard($('#zdrops'));
-    $('#ztop').innerHTML = hol.list && hol.list.length ? `<div class="board"><table class="tbl"><tr><th>seat</th><th>wallet</th><th class="r">weight</th><th class="r">clock</th></tr>${hol.list.slice(0, 6).map(h => `<tr class="c" data-w="${h.w}"><td>#${h.rank}</td><td>${short(h.w)}</td><td class="r">${pct(h.pct)}</td><td class="r">${h.a ? h.a.m.toFixed(2) + 'x' : '—'}</td></tr>`).join('')}</table></div>` : emptyHTML('no snapshot yet', 'The manifest fills up with the first snapshot.');
+    $('#ztop').innerHTML = hol.list && hol.list.length ? `<table class="tbl"><tr><th>seat</th><th>wallet</th><th class="r">weight</th><th class="r">clock</th></tr>${hol.list.slice(0, 6).map(h => `<tr class="c" data-w="${h.w}"><td>#${h.rank}</td><td>${short(h.w)}</td><td class="r">${pct(h.pct)}</td><td class="r">${h.a ? h.a.m.toFixed(2) + 'x' : '—'}</td></tr>`).join('')}</table>` : `<div class="dim" style="padding:8px 0">nobody on the manifest yet.</div>`;
     $$('#ztop tr.c').forEach(r => r.onclick = () => go('#/pass/' + r.dataset.w));
   };
   const emptyHTML = (t, p) => `<div class="empty"><pre>${esc(A.SPRITE.join('\n'))}</pre><div style="color:#fff">${t}</div><div style="margin-top:6px">${p}</div></div>`;
@@ -350,7 +357,9 @@
     const tb = $('#tb', el), ti = $('#ti', el), hist = []; let hi = 0;
     const say = (t, c = '') => { tb.insertAdjacentHTML('beforeend', `<div class="${c}">${t}</div>`); tb.scrollTop = 1e9; };
     const CMD = { help: () => say(Object.keys(CMD).map(k => k.padEnd(10) + HELP[k]).join('\n')),
-      zone: () => go('#/'), board: () => go('#/board'), radar: () => go('#/radar'), fleet: () => go('#/fleet'), how: () => go('#/how'), ops: () => go('#/ops'),
+      zone: () => go('#/'), promise: () => go('#/promise'), ls: () => say(NAV.map(([k], i) => `${i + 1}:${k}`).join('   ')), whoami: () => say(WL.pk ? WL.pk : 'not connected. type connect'), connect: async () => { const k = await connect(); say(k ? 'connected ' + k : 'not connected', k ? 'o' : 'e'); },
+      hold: async () => { const h = await api('hold'); say(h.items.length || h.fees ? [...h.items.map(x => `${fmt(x.ui)} ${x.symbol ? '$' + x.symbol : short(x.mint)}${x.usd != null ? '  ≈ $' + fmt(x.usd, 2) : ''}`), h.fees ? `${fmt(h.fees, 4)} SOL unclaimed fees` : ''].filter(Boolean).join('\n') + `\ntotal ≈ $${fmt(h.usd, 2)}` : 'the hold is empty'); },
+      receipts: () => say(PROMISE.map(([d, w, t]) => `${d.padEnd(12)} ${w.padEnd(16)} ${t.replace(/<[^>]+>/g, '"')}`).join('\n')), board: () => go('#/board'), radar: () => go('#/radar'), fleet: () => go('#/fleet'), how: () => go('#/how'), ops: () => go('#/ops'),
       pass: a => go('#/pass' + (a ? '/' + a : '')), wallet: a => a ? go('#/pass/' + a) : say('usage: wallet <address>', 'e'),
       drops: async () => { const L = await loadDrops(); say(L.length ? L.slice(0, 20).map(d => `${flight(d)}  ${cargoOf(d).padEnd(6)} ${fmt(amtOf(d), 4).padStart(12)}  ${String(d.wallets).padStart(4)} wallets  ${d.status}`).join('\n') : 'no drops yet'); },
       top: async a => { const h = await loadHolders(300); const n = Math.min(50, +a || 10); say(h.list.length ? h.list.slice(0, n).map(x => `#${String(x.rank).padEnd(4)} ${short(x.w, 5)}  ${pct(x.pct).padStart(9)}  ${x.a ? x.a.m.toFixed(2) + 'x' : ''}`).join('\n') : 'no snapshot yet'); },
@@ -360,13 +369,15 @@
       sound: a => { SND.set(a !== 'off'); paintSnd(); say('sound ' + (SND.on ? 'on' : 'off')); },
       intro: () => { try { sessionStorage.removeItem('a1r-intro'); } catch (e) { } location.hash = '#/'; location.reload(); },
       clear: () => { tb.innerHTML = ''; } };
-    const HELP = { help: 'this list', zone: 'the drop zone', board: 'every drop', radar: 'who is holding', fleet: 'our coins', how: 'the rules', ops: 'the operator console', pass: 'your boarding pass', wallet: '<address> any wallet\'s pass', drops: 'the last 20 drops', top: '[n] the heaviest wallets', days: 'the days since "coming soon"', status: 'the engine', verify: '<id> open a flight', sound: 'on|off', intro: 'watch the intro again', clear: 'clear' };
+    const HELP = { help: 'this list', promise: 'the receipts', ls: 'every page', whoami: 'your wallet', connect: 'connect a wallet', hold: 'the cargo in the hold', receipts: 'the timeline, here', zone: 'the drop zone', board: 'every drop', radar: 'who is holding', fleet: 'our coins', how: 'the rules', ops: 'the operator console', pass: 'your boarding pass', wallet: '<address> any wallet\'s pass', drops: 'the last 20 drops', top: '[n] the heaviest wallets', days: 'the days since "coming soon"', status: 'the engine', verify: '<id> open a flight', sound: 'on|off', intro: 'watch the intro again', clear: 'clear' };
     $('#tf', el).onsubmit = async e => { e.preventDefault(); const v = ti.value.trim(); if (!v) return; hist.push(v); hi = hist.length; ti.value = ''; say('&gt; ' + esc(v), 'c'); const [c, ...a] = v.split(/\s+/); const f = CMD[c.toLowerCase()]; SND.tick(.03, 2400);
       if (!f) return say(`unknown command: ${esc(c)}. type help`, 'e'); try { await f(a.join(' ')); } catch (x) { say(esc(x.message), 'e'); } };
     ti.onkeydown = e => { if (e.key === 'Tab') { e.preventDefault(); const v = ti.value.toLowerCase(), m = Object.keys(CMD).filter(k => k.startsWith(v)); if (m.length === 1) ti.value = m[0] + ' '; else if (m.length) say(m.join('  ')); }
       if (e.key === 'ArrowUp') { hi = Math.max(0, hi - 1); ti.value = hist[hi] || ''; e.preventDefault(); } if (e.key === 'ArrowDown') { hi = Math.min(hist.length, hi + 1); ti.value = hist[hi] || ''; } if (e.key === 'Escape') toggle(false); };
-    const toggle = v => { const on = v ?? !el.classList.contains('on'); el.classList.toggle('on', on); if (on) { setTimeout(() => ti.focus(), 50); if (!tb.innerHTML) say('A1R console. type help.', 'o'); SND.whoosh(.3, .04, true); } };
-    return { toggle, say }; })();
+    const toggle = v => { if (el.classList.contains('docked')) { ti.focus(); return; } const on = v ?? !el.classList.contains('on'); el.classList.toggle('on', on); if (on) { setTimeout(() => ti.focus(), 50); if (!tb.innerHTML) say('A1R console. type help.', 'o'); SND.whoosh(.3, .04, true); } };
+    const dock = host => { host.appendChild(el); el.classList.add('docked', 'on'); if (!tb.innerHTML) say('a1r shell. type help. tab completes, ↑ ↓ for history.', 'o'); };
+    const undock = () => { if (!el.classList.contains('docked')) return; document.body.appendChild(el); el.classList.remove('docked', 'on'); };
+    return { toggle, say, dock, undock }; })();
 
   // ---------------------------------------------------------------- router
   const go = h => { if (location.hash === h) route(); else location.hash = h; };
@@ -374,7 +385,11 @@
     if (k === 'd') { if (!$('#main .view')) await render('board'); dropDrawer(arg); return; }
     await render(V[k] ? k : 'zone', arg); }
   async function render(k, arg) { if (heroStop) { heroStop(); heroStop = null; } if (radarStop) { radarStop(); radarStop = null; } closeDrawer();
-    $$('#nav a').forEach(a => a.classList.toggle('on', a.dataset.k === k)); movePill(); const m = $('#main'); m.innerHTML = '<div class="view"></div>'; scrollTo({ top: 0 });
+    $$('#nav a').forEach(a => a.classList.toggle('on', a.dataset.k === k)); const m = $('#main'); m.innerHTML = '<div class="prompt" id="prm"></div><div class="view"></div>'; scrollTo({ top: 0 });
+    const cmd = { zone: './a1r --status', promise: 'cat receipts.log', board: './board --all', pass: './pass ' + (arg ? short(decodeURIComponent(arg), 4) : '--me'), radar: './radar --live', fleet: 'ls ./fleet', how: 'man a1r', ops: 'sudo ./cockpit' }[k] || k;
+    $('#ttl').textContent = `a1r@dropzone: ~/${k === 'zone' ? '' : k}`; $('#prm').innerHTML = `<span class="ps">a1r@dropzone</span>:<span class="pd">~${k === 'zone' ? '' : '/' + k}</span>$ <span class="pc"></span><span class="cur">█</span>`;
+    const pc = $('#prm .pc'); let ci = 0; const typ = () => { if (!pc.isConnected || ci > cmd.length) return; pc.textContent = cmd.slice(0, ci++); if (ci % 2) SND.tick(.01, 3000); setTimeout(typ, 22); }; typ();
+    if (k !== 'zone') term.undock();
     try { await V[k]($('.view', m), arg && decodeURIComponent(arg)); } catch (e) { $('.view', m).innerHTML = `<div class="empty">${esc(e.message)}</div>`; } }
   addEventListener('hashchange', route); addEventListener('resize', movePill);
   addEventListener('keydown', e => { if (e.target.closest('input,textarea,select')) return; if (window.AI && window.AI.active) return; if (e.key === '`') { e.preventDefault(); term.toggle(); return; }
