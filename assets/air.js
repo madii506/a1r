@@ -22,7 +22,7 @@
         if (off) { const d = off(cx, cy, L[j + 2]); if (!d) continue; px += d[0]; py += d[1]; al = d[2]; if (al <= 0) continue; if (al < 1) g.globalAlpha = al; }
         g.fillText(LUM[idx], px, py); if (al < 1) g.globalAlpha = 1; } }
     return { x0, y0, cw, ch, C, R: Rw }; };
-  A.crateDims = () => CR ? { cols: CR.cols, rows: CR.rows } : { cols: 120, rows: 66 };
+  A.crateDims = () => CR ? { cols: CR.cols, rows: CR.rows, n: CR.n } : { cols: 120, rows: 66, n: 48 };
 
   // a little crate sprite for the sky and the board
   A.SPRITE = [' .-""-. ', '/______\\', '\\  ||  /', ' \\ || / ', '  [##]  '];

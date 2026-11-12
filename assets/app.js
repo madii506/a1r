@@ -14,7 +14,7 @@
   const days = ms => ms ? Math.max(0, (Date.now() - ms) / 86400e3) : 0;
   const DAYS_SINCE = () => Math.max(0, Math.floor((Date.now() - Date.UTC(2025, 6, 9)) / 86400e3));
   const solscan = (k, v) => `https://solscan.io/${k}/${v}`;
-  async function api(a, q = '') { const r = await fetch(`${API}?a=${a}${q}`); const j = await r.json().catch(() => ({ error: 'bad response' })); if (!r.ok || j.error) throw new Error(j.error || r.status); return j; }
+  async function api(a, q = '') { const r = await fetch(`${API}?a=${a}${q}${location.hash.startsWith('#/ops') ? '&fresh=' + Date.now() : ''}`); const j = await r.json().catch(() => ({ error: 'bad response' })); if (!r.ok || j.error) throw new Error(j.error || r.status); return j; }
   async function post(a, b) { const r = await fetch(`${API}?a=${a}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(b) }); const j = await r.json().catch(() => ({ error: 'bad response' })); if (!r.ok || j.error) throw new Error(j.error || r.status); return j; }
   function toast(m) { const t = $('#toast'); t.innerHTML = m; t.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('on'), 4200); }
   const copy = (text, what) => { const ok = () => { toast((what || 'Copied') + ' copied'); SND.blip(990, .03); }; if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(ok, () => toast(esc(text))); else toast(esc(text)); };
@@ -73,17 +73,23 @@
 
   // ---------------------------------------------------------------- the crate in the hero
   let heroStop = null;
-  function heroCrate(stage) { const cv = $('canvas', stage), g = cv.getContext('2d'); let W, H, D, yaw = .7, vel = .28, drag = null, raf = 0, last = 0, alive = true;
-    const size = () => { D = Math.min(devicePixelRatio || 1, 2); W = stage.clientWidth; H = stage.clientHeight; cv.width = W * D; cv.height = H * D; };
-    const dims = A.crateDims(), loop = now => { if (!alive) return; raf = requestAnimationFrame(loop); const dt = Math.min(.05, (now - (last || now)) / 1000); last = now;
-      if (!drag) { yaw += vel * dt; vel += (.28 - vel) * dt * .8; } g.setTransform(D, 0, 0, D, 0, 0); g.clearRect(0, 0, W, H);
-      const cw = Math.min(W / (dims.cols * 1.05), H / (dims.rows * 1.917 * 1.04)), sw = Math.sin(now / 1300) * .035, bob = Math.sin(now / 900) * 4;
-      g.save(); g.translate(W / 2, H * .08); g.rotate(sw); g.translate(-W / 2, -H * .08); A.drawCrate(g, W / 2, H / 2 + bob, cw, yaw); g.restore(); };
+  // the crate: its ASCII is drawn once per turn step into an offscreen canvas, and each frame only places that picture (bob and sway).
+  // It runs at most 60 times a second, and not at all when it is off screen or the tab is hidden.
+  function heroCrate(stage) { const cv = $('canvas', stage), g = cv.getContext('2d'), oc = document.createElement('canvas'), og = oc.getContext('2d');
+    let W, H, D, yaw = .7, vel = .28, drag = null, raf = 0, last = 0, alive = true, seen = true, key = null;
+    const size = () => { D = Math.min(devicePixelRatio || 1, 2); W = stage.clientWidth; H = stage.clientHeight; cv.width = oc.width = W * D; cv.height = oc.height = H * D; key = null; };
+    const io = 'IntersectionObserver' in window ? new IntersectionObserver(e => { seen = e[0].isIntersecting; }) : null; if (io) io.observe(stage);
+    const dims = A.crateDims(), loop = now => { if (!alive) return; raf = requestAnimationFrame(loop); if (!seen || document.hidden || now - last < 15.5) return; const dt = Math.min(.05, (now - (last || now)) / 1000); last = now;
+      if (!drag) { yaw += vel * dt; vel += (.28 - vel) * dt * .8; }
+      const cw = Math.min(W / (dims.cols * 1.05), H / (dims.rows * 1.917 * 1.04)), n = dims.n || 48, k = ((Math.round(yaw / (Math.PI * 2) * n) % n) + n) % n;
+      if (k !== key) { key = k; og.setTransform(D, 0, 0, D, 0, 0); og.clearRect(0, 0, W, H); A.drawCrate(og, W / 2, H / 2, cw, yaw); }
+      const sw = Math.sin(now / 1300) * .035, bob = Math.sin(now / 900) * 4; g.setTransform(D, 0, 0, D, 0, 0); g.clearRect(0, 0, W, H);
+      g.save(); g.translate(W / 2, H * .08); g.rotate(sw); g.translate(-W / 2, -H * .08 + bob); g.drawImage(oc, 0, 0, W, H); g.restore(); };
     stage.onpointerdown = e => { drag = { x: e.clientX, y: yaw, t: performance.now() }; stage.setPointerCapture(e.pointerId); SND.tick(.03, 1400); };
     stage.onpointermove = e => { if (!drag) return; const ny = drag.y - (e.clientX - drag.x) / 140, now = performance.now(); vel = (ny - yaw) / Math.max(.016, (now - drag.t) / 1000); yaw = ny; drag.t = now; if (Math.random() < .2) SND.tick(.01, 2400); };
     stage.onpointerup = () => { drag = null; vel = Math.max(-6, Math.min(6, vel)); };
     addEventListener('resize', size); size(); A.crateReady.then(() => { raf = requestAnimationFrame(loop); });
-    return () => { alive = false; cancelAnimationFrame(raf); removeEventListener('resize', size); }; }
+    return () => { alive = false; cancelAnimationFrame(raf); removeEventListener('resize', size); io && io.disconnect(); }; }
 
   // ---------------------------------------------------------------- the promise, with sources
   const PROMISE = [
@@ -172,8 +178,8 @@
 
   // the clock, drawn: 1x to 3x over 14 days, and a wallet riding it
   function clockChart(cv) { const g = cv.getContext('2d'); let raf = 0, alive = true, t0 = 0, seen = false; const R = (S.status || {}).rules || RDEF;
-    const io = 'IntersectionObserver' in window ? new IntersectionObserver(e => { if (e[0].isIntersecting && !seen) { seen = true; t0 = performance.now(); } }) : null; io ? io.observe(cv) : (seen = true);
-    const draw = now => { if (!alive) return; raf = requestAnimationFrame(draw); if (!t0 && seen) t0 = now; const D = Math.min(devicePixelRatio || 1, 2), W = cv.clientWidth, H = cv.clientHeight; if (!W) return; if (cv.width !== Math.round(W * D)) { cv.width = Math.round(W * D); cv.height = Math.round(H * D); }
+    let vis = true, lastD = 0; const io = 'IntersectionObserver' in window ? new IntersectionObserver(e => { vis = e[0].isIntersecting; if (vis && !seen) { seen = true; t0 = performance.now(); } }) : null; io ? io.observe(cv) : (seen = true);
+    const draw = now => { if (!alive) return; raf = requestAnimationFrame(draw); if (!vis || document.hidden || now - lastD < 32) return; lastD = now; if (!t0 && seen) t0 = now; const D = Math.min(devicePixelRatio || 1, 2), W = cv.clientWidth, H = cv.clientHeight; if (!W) return; if (cv.width !== Math.round(W * D)) { cv.width = Math.round(W * D); cv.height = Math.round(H * D); }
       g.setTransform(D, 0, 0, D, 0, 0); g.clearRect(0, 0, W, H); const L = 30, B = H - 16, T = 10, Rr = W - 6, days = R.multDays * 1.5, X = d => L + (Rr - L) * d / days, Y = m => B - (B - T) * (m - 1) / (R.maxMult - 1);
       g.font = '10px JB, ui-monospace, monospace'; g.lineWidth = 1;
       for (let m = 1; m <= R.maxMult; m++) { g.strokeStyle = 'rgba(255,255,255,.07)'; g.beginPath(); g.moveTo(L, Math.round(Y(m)) + .5); g.lineTo(Rr, Math.round(Y(m)) + .5); g.stroke(); g.fillStyle = '#5a5a5a'; g.fillText(m + 'x', 2, Y(m) + 3); }
