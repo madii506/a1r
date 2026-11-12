@@ -245,18 +245,18 @@ module.exports = async (req, res) => {
   const q = req.query || Object.fromEntries(new URL(req.url, 'http://x').searchParams), a = String(q.a || 'status');
   try {
     if (req.method === 'GET') {
-      if (a === 'status') return out(res, 200, await status(), 'public, max-age=10');
+      if (a === 'status') return out(res, 200, await status(), 'public, max-age=5, s-maxage=8, stale-while-revalidate=30');
       if (a === 'snap') { if (!hasStore()) return out(res, 200, { at: 0, list: [], off: true }); const s = await snapshot(q.force === '1' && false); return out(res, 200, { at: s.at, eligible: s.eligible, holders: s.holders, mints: s.mints, busy: !!s.busy }); }
-      if (a === 'holders') { const s = await readJSON('snap.json'); const n = Math.min(500, +q.n || 100); return out(res, 200, s ? { at: s.at, total: s.total, eligible: s.eligible, holders: s.holders, mints: s.mints, list: s.list.slice(0, n) } : { at: null, list: [] }, 'public, max-age=15'); }
+      if (a === 'holders') { const s = await readJSON('snap.json'); const n = Math.min(500, +q.n || 100); return out(res, 200, s ? { at: s.at, total: s.total, eligible: s.eligible, holders: s.holders, mints: s.mints, list: s.list.slice(0, n) } : { at: null, list: [] }, 'public, max-age=10, s-maxage=15, stale-while-revalidate=60'); }
       if (a === 'wallet') return out(res, 200, await walletView(pk(q.w).toBase58()), 'public, max-age=10');
-      if (a === 'drops') return out(res, 200, await dropIndex(), 'public, max-age=10');
+      if (a === 'drops') return out(res, 200, await dropIndex(), 'public, max-age=5, s-maxage=8, stale-while-revalidate=30');
       if (a === 'drop') { const p = await readJSON(`plan/${clean(q.id, 40).replace(/[^a-z0-9]/g, '')}.json`); return p ? out(res, 200, p, 'public, max-age=10') : out(res, 404, { error: 'no such drop' }); }
-      if (a === 'coins') return out(res, 200, await coins(), 'public, max-age=30');
+      if (a === 'coins') return out(res, 200, await coins(), 'public, max-age=30, s-maxage=60, stale-while-revalidate=300');
       if (a === 'holdings') return out(res, 200, await holdings(pk(q.w).toBase58()));
       if (a === 'chain') return out(res, 200, await chain(), 'public, max-age=20, s-maxage=30');
-      if (a === 'verify') return out(res, 200, await verify(q.id), 'public, max-age=20');
+      if (a === 'verify') return out(res, 200, await verify(q.id), 'public, max-age=20, s-maxage=20');
       if (a === 'sol') return out(res, 200, { usd: await solUsd() }, 'public, max-age=30');
-      if (a === 'hold') return out(res, 200, await hold(), 'public, max-age=30');
+      if (a === 'hold') return out(res, 200, await hold(), 'public, max-age=20, s-maxage=30, stale-while-revalidate=120');
       if (a === 'ping') return out(res, 200, await ping(), 'public, max-age=3, s-maxage=4');
       if (a === 'scan') return out(res, 200, await scan(q.mint), 'public, max-age=30, s-maxage=60');
       if (a === 'art') { const im = await art(q.t); res.statusCode = 200; res.setHeader('content-type', im.type); res.setHeader('access-control-allow-origin', '*'); res.setHeader('cache-control', 'public, max-age=86400, s-maxage=604800, immutable'); return res.end(im.buf); }
